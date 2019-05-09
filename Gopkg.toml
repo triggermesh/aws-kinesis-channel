@@ -1,0 +1,50 @@
+# Gopkg.toml example
+#
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#   name = "github.com/x/y"
+#   version = "2.4.0"
+#
+# [prune]
+#   non-go = false
+#   go-tests = true
+#   unused-packages = true
+
+[[override]]
+  name = "k8s.io/client-go"
+  version = "kubernetes-1.13.1"
+
+[[override]]
+  name = "k8s.io/apimachinery"
+  version = "kubernetes-1.13.1"
+
+[[override]]
+  name = "k8s.io/api"
+  version = "kubernetes-1.13.1"
+
+[[override]]
+  name = "sigs.k8s.io/controller-runtime"
+  version = "v0.1.10"
+
+[[override]]
+  name = "github.com/knative/pkg"
+  # HEAD as of 2019-03-21 💖
+  revision = "60fdcbcabd2faeb34328d8b2725dc76c59189453"
+
+[[constraint]]
+  name = "github.com/knative/eventing"
+  revision = "441cc942390661cfec2ce9148fb15916a0044994"
