@@ -56,7 +56,7 @@ type reconciler struct {
 	client   client.Client
 	recorder record.EventRecorder
 	logger   *zap.Logger
-	qClient  kinesis.Client
+	qClient  *kinesis.Client
 }
 
 // Verify the struct implements reconcile.Reconciler
