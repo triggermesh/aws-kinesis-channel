@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	// Name is the name of the IBM MQ ClusterChannelProvisioner.
+	// Name is the name of the AWS Kinesis ClusterChannelProvisioner.
 	Name = "aws-kinesis"
 
 	// Name of the corev1.Events emitted from the reconciliation process

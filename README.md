@@ -5,7 +5,7 @@ Cluster channel provisioner provides Knative channels for [AWS Kinesis](https://
 
 ## Installation
 
-Cluster channel provisioner consists of several components: IBM MQ service to store events, channel controller and message dispatcher. Channel controller and message dispatcher must run together in the `knative-eventing` namespace
+Cluster channel provisioner consists of several components: channel controller and message dispatcher. Channel controller and message dispatcher must run together in the `knative-eventing` namespace
 
 You can install Cluster channel provisioner by applying `aws-kinesis-channel-provisioner.yaml` manifest:
 
@@ -23,7 +23,7 @@ kubectl -n knative-eventing get pods --selector=clusterChannelProvisioner=aws-ki
 Dispatcher pod may have an API connection errors on initialization so don't worry if you see a couple of restart in a status output.  
 
 
-Please note that provided configurations has several hardcoded values, such as `AWS_REGION` which is set to `us-east-1` and `KINESIS_STREAM` value which is set to `triggermesh` which may differs for setups with customized MQ. 
+Please note that provided configurations has several hardcoded values, such as `AWS_REGION` which is set to `us-east-1` and `KINESIS_STREAM` value which is set to `triggermesh`. 
   
 
 ## Development

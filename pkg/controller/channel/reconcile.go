@@ -50,13 +50,13 @@ const (
 	streamCreateFailed         = "StreamCreateFailed"
 )
 
-// reconciler reconciles ibm-mq Channels by creating the K8s Service and Istio VirtualService
+// reconciler reconciles aws-kinesis Channels by creating the K8s Service and Istio VirtualService
 // allowing other processes to send data to them.
 type reconciler struct {
 	client   client.Client
 	recorder record.EventRecorder
 	logger   *zap.Logger
-	qClient  *kinesis.Client
+	kClient  *kinesis.Client
 }
 
 // Verify the struct implements reconcile.Reconciler
@@ -120,7 +120,7 @@ func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 }
 
 // shouldReconcile determines if this Controller should control (and therefore reconcile) a given
-// Channel. This Controller only handles idm-mq channels.
+// Channel. This Controller only handles aws-kinesis channels.
 func (r *reconciler) shouldReconcile(c *eventingv1alpha1.Channel) bool {
 	if c.Spec.Provisioner != nil {
 		return ccpcontroller.IsControlled(c.Spec.Provisioner)
@@ -133,10 +133,10 @@ func (r *reconciler) shouldReconcile(c *eventingv1alpha1.Channel) bool {
 // returned error indicates an error during reconciliation.
 func (r *reconciler) reconcile(ctx context.Context, c *eventingv1alpha1.Channel) (bool, error) {
 	c.Status.InitializeConditions()
-	stream, err := r.qClient.DescribeKinesisStream(c.Name)
+	stream, err := r.kClient.DescribeKinesisStream(c.Name)
 	if err != nil {
 		logging.FromContext(ctx).Info("Failed to describe kinesis stream", zap.Error(err))
-		if err := r.qClient.CreateKinesisStream(c.Name); err != nil {
+		if err := r.kClient.CreateKinesisStream(c.Name); err != nil {
 			r.recorder.Eventf(c, v1.EventTypeWarning, streamCreateFailed, "Failed to create queue for the Channel: %v", err)
 			return false, err
 		}

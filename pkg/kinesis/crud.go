@@ -21,6 +21,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/knative/eventing/pkg/provisioners"
 )
 
 type Client struct {
@@ -48,6 +49,7 @@ func NewClient() (*Client, error) {
 }
 
 func (c *Client) DescribeKinesisStream(streamName string) (*kinesis.StreamDescription, error) {
+	c.CreateKinesisStream(streamName)
 	stream, err := c.Kinesis.DescribeStream(&kinesis.DescribeStreamInput{
 		StreamName: aws.String(streamName),
 	})
@@ -67,5 +69,44 @@ func (c *Client) DeleteKinesisStream(enforceConsumerDeletion bool, streamName st
 		EnforceConsumerDeletion: aws.Bool(enforceConsumerDeletion),
 		StreamName:              aws.String(streamName),
 	})
+	return err
+}
+
+func (c *Client) GetStreamMessage(shardIterator *string) (provisioners.Message, *string, error) {
+	// Get info about a particular stream
+	msg := provisioners.Message{}
+	var nextShardIterator *string
+
+	// set records output limit. Should not be more than 10000, othervise panics
+	input := kinesis.GetRecordsInput{
+		Limit:         aws.Int64(1),
+		ShardIterator: shardIterator,
+	}
+
+	recordsOutput, err := c.Kinesis.GetRecords(&input)
+	if err != nil {
+		return msg, nextShardIterator, err
+	}
+
+	nextShardIterator = recordsOutput.NextShardIterator
+
+	msg.Payload = recordsOutput.Records[0].Data
+	msg.Headers = map[string]string{
+		"EncryptionType": *recordsOutput.Records[0].EncryptionType,
+		"PartitionKey":   *recordsOutput.Records[0].PartitionKey,
+		"SequenceNumber": *recordsOutput.Records[0].SequenceNumber,
+	}
+
+	return msg, nextShardIterator, nil
+}
+
+func (c *Client) PutMessageToStream(streamName string, messagePayload []byte) error {
+
+	_, err := c.Kinesis.PutRecord(&kinesis.PutRecordInput{
+		Data:         messagePayload,
+		PartitionKey: aws.String("1"),
+		StreamName:   aws.String(streamName),
+	})
+
 	return err
 }

@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-// This is the main method for the IBM MQ Channel controller. It reconciles the
+// This is the main method for the AWS Kinesis Channel controller. It reconciles the
 // ClusterChannelProvisioner itself and Channels that use the 'aws-kinesis' provisioner. It does not
 // handle the anything at the data layer.
 func main() {
