@@ -54,9 +54,9 @@ func (c *Client) DescribeKinesisStream(streamName string) (*kinesis.StreamDescri
 	return stream.StreamDescription, err
 }
 
-func (c *Client) CreateKinesisStream(shardCount int64, streamName string) error {
+func (c *Client) CreateKinesisStream(streamName string) error {
 	_, err := c.Kinesis.CreateStream(&kinesis.CreateStreamInput{
-		ShardCount: aws.Int64(shardCount),
+		ShardCount: aws.Int64(1),
 		StreamName: aws.String(streamName),
 	})
 	return err

@@ -142,7 +142,7 @@ func (r *reconciler) reconcile(ctx context.Context, c *eventingv1alpha1.Channel)
 		}
 	}
 
-	if stream.StreamStatus == "DELETING" {
+	if *stream.StreamStatus == "DELETING" {
 		util.RemoveFinalizer(c, finalizerName)
 		return false, nil
 	}
