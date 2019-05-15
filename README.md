@@ -39,12 +39,27 @@ Please note that provided configurations has several hardcoded values, such as `
 
 ## Development
 
-Development cycle is based on [ko](https://github.com/google/ko) tool - make your changes locally and deploy them with a single command:  
+Development cycle is based on [ko](https://github.com/google/ko) tool. `ko` can be installed via:
+```
+go get github.com/google/ko/cmd/ko
+```
+Set `KO_DOCKER_REPO` env var so that `ko` would know where to push the image. Use `gcr.io` or `docker.io` on your choice
 
+```
+export KO_DOCKER_REPO=docker.io/yourUsername
+```
+make your changes locally and deploy them with a single command:  
 ```
 ko apply -f config/
 ```
-
+After a deploy check the status of the pod by running: 
+```
+kubectl -n knative-eventing get pods
+```
+Based on resutls you should see a controller and dispatcher you have just deployed. To view their logs use:
+```
+kubectl -n knative-eventing logs podName
+```
 
 ## Support
 
