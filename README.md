@@ -7,17 +7,28 @@ Cluster channel provisioner provides Knative channels for [AWS Kinesis](https://
 
 Cluster channel provisioner consists of several components: channel controller and message dispatcher. Channel controller and message dispatcher must run together in the `knative-eventing` namespace
 
+Make sure you have a `aws-kinesis-secret` secret with your Kinesis configuration in `knative-eventing` namespace: 
+```
+kubectl create secret generic aws-kinesis-secret --from-literal=aws_access_key_id=yourAccessKeyID --from-literal=aws_secret_access_key=yourAccessKey --namespace=knative-eventing
+```
+
 You can install Cluster channel provisioner by applying `aws-kinesis-channel-provisioner.yaml` manifest:
 
 ```
 kubectl apply -f aws-kinesis-channel-provisioner.yaml
 ```
- this will install all required resources, cluster roles, services, etc.
-
-Check that all provisioner pods are in `Running` state:
+this will install all required resources, cluster roles, services, etc. Check that all provisioner pods are in `Running` state:
 
 ```
 kubectl -n knative-eventing get pods --selector=clusterChannelProvisioner=aws-kinesis
+```
+If something went wroing, describe newly created pod to see the origin of the problem. 
+```
+kubectl -n knative-eventing describe pod yourPodNameHere
+```
+Solve the problem and then to recreate the pod, execute
+```
+kubectl -n knative-eventing delete pod yourPodNameHere
 ```
 
 Dispatcher pod may have an API connection errors on initialization so don't worry if you see a couple of restart in a status output.  
