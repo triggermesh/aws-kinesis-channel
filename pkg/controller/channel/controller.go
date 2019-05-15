@@ -39,12 +39,6 @@ func ProvideController() func(manager.Manager, *zap.Logger) (controller.Controll
 		client, err := kinesis.NewClient()
 		if err != nil {
 			return nil, err
-		}client, client, err := kinesis.NewClient()
-		if err != nil {
-			return nil, err
-		}err := kinesis.NewClient()
-		if err != nil {
-			return nil, err
 		}
 		// Setup a new controller to Reconcile Channels that belong to this Cluster Channel
 		// Provisioner.
