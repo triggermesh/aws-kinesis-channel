@@ -313,7 +313,7 @@ func (r *reconciler) messageReader(ctx context.Context, channelKey channelName) 
 				continue
 			}
 
-			message, newShardIterator, err := r.kClient.GetStreamMessage(nextShardIterator)
+			messages, newShardIterator, err := r.kClient.GetStreamMessage(nextShardIterator)
 			if err != nil {
 				r.logger.Error(fmt.Sprint("Could not Get StreamMessage. Error: ", err))
 				continue
@@ -322,7 +322,9 @@ func (r *reconciler) messageReader(ctx context.Context, channelKey channelName) 
 
 			r.channels[channelKey].subscriberLock.RLock()
 			for _, subscriber := range subscribers {
-				subscriber.messages <- &message
+				for _, message := range messages {
+					subscriber.messages <- &message
+				}
 			}
 			r.channels[channelKey].subscriberLock.RUnlock()
 		}

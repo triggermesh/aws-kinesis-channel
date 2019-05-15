@@ -24,10 +24,12 @@ import (
 	"github.com/knative/eventing/pkg/provisioners"
 )
 
+// Client contains Kinesis client to get API calls to AWS Kinesis
 type Client struct {
 	Kinesis *kinesis.Kinesis
 }
 
+// NewClient initializes new client
 func NewClient() (*Client, error) {
 	var client Client
 
@@ -48,6 +50,7 @@ func NewClient() (*Client, error) {
 	return &client, err
 }
 
+//DescribeKinesisStream first creates then describes kinesis stream.
 func (c *Client) DescribeKinesisStream(streamName string) (*kinesis.StreamDescription, error) {
 	c.CreateKinesisStream(streamName)
 	stream, err := c.Kinesis.DescribeStream(&kinesis.DescribeStreamInput{
@@ -56,6 +59,7 @@ func (c *Client) DescribeKinesisStream(streamName string) (*kinesis.StreamDescri
 	return stream.StreamDescription, err
 }
 
+//CreateKinesisStream creates stream with a steam name
 func (c *Client) CreateKinesisStream(streamName string) error {
 	_, err := c.Kinesis.CreateStream(&kinesis.CreateStreamInput{
 		ShardCount: aws.Int64(1),
@@ -64,6 +68,7 @@ func (c *Client) CreateKinesisStream(streamName string) error {
 	return err
 }
 
+//DeleteKinesisStream deletes selected stream
 func (c *Client) DeleteKinesisStream(enforceConsumerDeletion bool, streamName string) error {
 	_, err := c.Kinesis.DeleteStream(&kinesis.DeleteStreamInput{
 		EnforceConsumerDeletion: aws.Bool(enforceConsumerDeletion),
@@ -72,34 +77,39 @@ func (c *Client) DeleteKinesisStream(enforceConsumerDeletion bool, streamName st
 	return err
 }
 
-func (c *Client) GetStreamMessage(shardIterator *string) (provisioners.Message, *string, error) {
+//GetStreamMessage gets messages up to 10,000 from a specified stream shard
+func (c *Client) GetStreamMessage(shardIterator *string) ([]provisioners.Message, *string, error) {
 	// Get info about a particular stream
-	msg := provisioners.Message{}
+	messages := []provisioners.Message{}
 	var nextShardIterator *string
 
 	// set records output limit. Should not be more than 10000, othervise panics
 	input := kinesis.GetRecordsInput{
-		Limit:         aws.Int64(1),
 		ShardIterator: shardIterator,
 	}
 
 	recordsOutput, err := c.Kinesis.GetRecords(&input)
 	if err != nil {
-		return msg, nextShardIterator, err
+		return messages, nextShardIterator, err
+	}
+
+	for _, record := range recordsOutput.Records {
+		msg := provisioners.Message{}
+		msg.Payload = record.Data
+		msg.Headers = map[string]string{
+			"EncryptionType": *recordsOutput.Records[0].EncryptionType,
+			"PartitionKey":   *recordsOutput.Records[0].PartitionKey,
+			"SequenceNumber": *recordsOutput.Records[0].SequenceNumber,
+		}
+		messages = append(messages, msg)
 	}
 
 	nextShardIterator = recordsOutput.NextShardIterator
 
-	msg.Payload = recordsOutput.Records[0].Data
-	msg.Headers = map[string]string{
-		"EncryptionType": *recordsOutput.Records[0].EncryptionType,
-		"PartitionKey":   *recordsOutput.Records[0].PartitionKey,
-		"SequenceNumber": *recordsOutput.Records[0].SequenceNumber,
-	}
-
-	return msg, nextShardIterator, nil
+	return messages, nextShardIterator, nil
 }
 
+//PutMessageToStream puts messages to the indicated stream
 func (c *Client) PutMessageToStream(streamName string, messagePayload []byte) error {
 
 	_, err := c.Kinesis.PutRecord(&kinesis.PutRecordInput{
