@@ -1,0 +1,10 @@
+apiVersion: kinesiscontroller.triggermesh.dev/v1alpha1
+kind: Channel
+metadata:
+  name: example-kinesis-chan
+spec:
+  deploymentName: example-kinesis-chan
+  stream: triggermesh-test
+  aws-region: us-east-1
+  aws-creds: awscreds
+  replicas: 1
