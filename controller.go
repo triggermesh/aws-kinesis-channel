@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
    http://www.apache.org/licenses/LICENSE-2.0
-   
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -69,8 +69,8 @@ type Controller struct {
 
 	deploymentsLister appslisters.DeploymentLister
 	deploymentsSynced cache.InformerSynced
-	channelsLister        listers.ChannelLister
-	channelsSynced        cache.InformerSynced
+	channelsLister    listers.ChannelLister
+	channelsSynced    cache.InformerSynced
 
 	// workqueue is a rate limited work queue. This is used to queue work to be
 	// processed instead of performing it as soon as a change happens. This
@@ -102,11 +102,11 @@ func NewController(
 
 	controller := &Controller{
 		kubeclientset:     kubeclientset,
-		kinesisclientset:   kinesisclientset,
+		kinesisclientset:  kinesisclientset,
 		deploymentsLister: deploymentInformer.Lister(),
 		deploymentsSynced: deploymentInformer.Informer().HasSynced,
-		channelsLister:        channelInformer.Lister(),
-		channelsSynced:        channelInformer.Informer().HasSynced,
+		channelsLister:    channelInformer.Lister(),
+		channelsSynced:    channelInformer.Informer().HasSynced,
 		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Channels"),
 		recorder:          recorder,
 	}
@@ -327,7 +327,7 @@ func (c *Controller) updateChannelStatus(channel *samplev1alpha1.Channel, deploy
 	// we must use Update instead of UpdateStatus to update the Status block of the Channel resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := c.kinesisclientset.kinesiscontrollerV1alpha1().Channels(channel.Namespace).Update(channelCopy)
+	_, err := c.kinesisclientset.KinesiscontrollerV1alpha1().Channels(channel.Namespace).Update(channelCopy)
 	return err
 }
 
