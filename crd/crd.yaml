@@ -1,0 +1,11 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: kinesis-sources.triggermesh.dev
+spec:
+  group: triggermesh.dev
+  version: v1
+  names:
+    kind: KinesisSource
+    plural: kinesis-sources
+  scope: Namespaced
