@@ -46,10 +46,19 @@ Build the image with
 ```
 docker build -t kinesiscrd .
 ```
-And then run it with the volumes to your `.kube` folder
 
+Create custom resource definition in your cluster: 
+```
+kubectl apply -f crd/crd.yaml
+```
+
+And then run it with the volumes to your `.kube` folder
 ```
 docker run -v $HOME/.kube:/root/.kube/  kinesiscrd:latest
+```
+Get the following as output
+
+```
 time="2019-06-21T14:28:32Z" level=info msg="Successfully constructed k8s client"
 time="2019-06-21T14:28:32Z" level=info msg="Controller.Run: initiating"
 time="2019-06-21T14:28:33Z" level=info msg="Controller.Run: cache sync complete"
