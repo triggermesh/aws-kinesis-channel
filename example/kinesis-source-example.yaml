@@ -5,4 +5,4 @@ metadata:
 spec:
   stream: triggermesh-test
   aws-region: us-east-1
-  aws-creds: awscreds
+  aws-creds: aws

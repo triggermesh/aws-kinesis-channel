@@ -12,6 +12,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/workqueue"
 
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
 	kinesissourceclientset "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned"
 	kinesissourceinformer_v1 "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/informers/externalversions/kinesissource/v1"
 )
