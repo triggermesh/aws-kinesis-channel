@@ -16,7 +16,7 @@ cd $GOPATH/src/k8s.io/code-generator
 
 ```
 
-## Run 
+## Run localy 
 First create custom resource definition in your cluster: 
 ```
 kubectl apply -f crd/crd.yaml
@@ -38,22 +38,22 @@ As output you get the following logs when creating, updating or deleting custom 
 INFO[0000] Successfully constructed k8s client          
 INFO[0000] Controller.Run: initiating                   
 INFO[0001] Controller.Run: cache sync complete          
-INFO[0001] Controller.runWorker: starting               
-INFO[0001] Controller.processNextItem: start            
-INFO[0198] Add kinesissource: default/anatoliy-aws-kinesis 
-INFO[0198] Controller.processNextItem: object created detected: default/anatoliy-aws-kinesis 
-INFO[0198] TestHandler.ObjectCreated                    
-INFO[0198] Controller.runWorker: processing next item   
-INFO[0198] Controller.processNextItem: start            
-INFO[0221] Update kinesissource: default/anatoliy-aws-kinesis 
-INFO[0221] Controller.processNextItem: object created detected: default/anatoliy-aws-kinesis 
-INFO[0221] TestHandler.ObjectCreated                    
-INFO[0221] Controller.runWorker: processing next item   
-INFO[0221] Controller.processNextItem: start            
-INFO[0241] Delete kinesissource: default/anatoliy-aws-kinesis 
-INFO[0241] Controller.processNextItem: object deleted detected: default/anatoliy-aws-kinesis 
-INFO[0241] TestHandler.ObjectDeleted                    
-INFO[0241] Controller.runWorker: processing next item   
-INFO[0241] Controller.processNextItem: start  
+INFO[0001] Controller.runWorker: starting                 
+```
+
+## Run with Docker 
+Build the image with 
+```
+docker build -t kinesiscrd .
+```
+And then run it with the volumes to your `.kube` folder
+
+```
+docker run -v $HOME/.kube:/root/.kube/  kinesiscrd:latest
+time="2019-06-21T14:28:32Z" level=info msg="Successfully constructed k8s client"
+time="2019-06-21T14:28:32Z" level=info msg="Controller.Run: initiating"
+time="2019-06-21T14:28:33Z" level=info msg="Controller.Run: cache sync complete"
+time="2019-06-21T14:28:33Z" level=info msg="Controller.runWorker: starting"
+time="2019-06-21T14:28:33Z" level=info msg="Controller.processNextItem: start"
 ```
 
