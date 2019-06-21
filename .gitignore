@@ -2,3 +2,4 @@ vendor
 .vscode
 controller
 aws-kinesis-controller
+kinesiscrd
