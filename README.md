@@ -2,12 +2,11 @@
 
 
 ## Generating Code for Custom Controller 
+In case of any changes to types for the custom controller, use the following commands to regenerate client and deepcopy files
 
 ```
 ROOT_PACKAGE="github.com/triggermesh/aws-kinesis-provisioner"
-
 CUSTOM_RESOURCE_NAME="kinesissource"
-
 CUSTOM_RESOURCE_VERSION="v1"
 
 go get -u k8s.io/code-generator/...
@@ -38,7 +37,6 @@ As output you get the following logs when creating, updating or deleting custom 
 ```
 INFO[0000] Successfully constructed k8s client          
 INFO[0000] Controller.Run: initiating                   
-INFO[0000] fjdslkfjdskl                                 
 INFO[0001] Controller.Run: cache sync complete          
 INFO[0001] Controller.runWorker: starting               
 INFO[0001] Controller.processNextItem: start            
