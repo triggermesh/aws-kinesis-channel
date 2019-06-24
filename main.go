@@ -4,11 +4,9 @@ import (
 	"flag"
 	"time"
 
+	eventingApi "github.com/knative/eventing/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
-	kubeinformers "k8s.io/client-go/informers"
-	knativeinformers "github.com/knative/serving/pkg/client/informers/externalversions"
 	"k8s.io/client-go/kubernetes"
-	versioned "github.com/knative/serving/pkg/client/clientset/versioned"
 	"k8s.io/client-go/tools/clientcmd"
 
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
@@ -46,9 +44,9 @@ func main() {
 		log.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
 
-	knativeClient, err := versioned.NewForConfig(cfg)
+	eventingClient, err := eventingApi.NewForConfig(cfg)
 	if err != nil {
-		log.Fatalf("Error building knative clientset: %s", err.Error())
+		log.Fatalf("Error building eventing clientset: %s", err.Error())
 	}
 
 	mainClient, err := clientset.NewForConfig(cfg)
@@ -56,21 +54,14 @@ func main() {
 		log.Fatalf("Error building example clientset: %s", err.Error())
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
-	kNativeInformerFactory := knativeinformers.NewSharedInformerFactory(knativeClient, time.Second*30)
 	kinesissourceInformerFactory := informers.NewSharedInformerFactory(mainClient, time.Second*30)
 
-	baseController := controller.NewController(kubeClient, mainClient,
-		kubeInformerFactory.Apps().V1().Deployments(),
+	baseController := controller.NewController(kubeClient, eventingClient, mainClient,
 		kinesissourceInformerFactory.Kinesissource().V1().KinesisSources())
 
-	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
-	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
-	kubeInformerFactory.Start(stopCh)
-	kNativeInformerFactory.Start(stopCh)
 	kinesissourceInformerFactory.Start(stopCh)
 
 	if err = baseController.Run(3, stopCh); err != nil {
 		log.Fatalf("Error running controller: %s", err.Error())
 	}
-} 
+}

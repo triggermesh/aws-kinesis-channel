@@ -35,11 +35,10 @@ type KinesisSource struct {
 
 // KinesisSourceSpec is the spec for a KinesisSource resource
 type KinesisSourceSpec struct {
-	DeploymentName string `json:"deployment_name"`
-	Replicas       *int32 `json:"replicas"`
-	StreamName     string `json:"stream_name"`
-	AccountRegion  string `json:"account_region"`
-	AccountCreds   string `json:"account_creds"`
+	Name          string `json:"name"`
+	StreamName    string `json:"stream_name"`
+	AccountRegion string `json:"account_region"`
+	AccountCreds  string `json:"account_creds"`
 }
 
 // KinesisSourceStatus is the status for a KinesisSource resource
