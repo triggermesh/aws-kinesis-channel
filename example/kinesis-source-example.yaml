@@ -3,6 +3,8 @@ kind: KinesisSource
 metadata:
   name: anatoliy-aws-kinesis
 spec:
+  deployment_name: "test"
+  replicas: 3
   stream: triggermesh-test
   aws-region: us-east-1
   aws-creds: aws
