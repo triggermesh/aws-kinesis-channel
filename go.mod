@@ -3,7 +3,12 @@ module github.com/triggermesh/aws-kinesis-provisioner
 go 1.12
 
 require (
+	github.com/google/go-containerregistry v0.0.0-20190623150931-ca8b66cb1b79 // indirect
 	github.com/imdario/mergo v0.3.7 // indirect
+	github.com/knative/build v0.6.0 // indirect
+	github.com/knative/pkg v0.0.0-20190624031202-2f853a1fdc7c // indirect
+	github.com/knative/serving v0.6.1 // indirect
+	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a // indirect
 	github.com/sirupsen/logrus v1.4.2
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45 // indirect
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
