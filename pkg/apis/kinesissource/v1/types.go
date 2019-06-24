@@ -29,14 +29,22 @@ type KinesisSource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec KinesisSourceSpec `json:"spec"`
+	Spec   KinesisSourceSpec   `json:"spec"`
+	Status KinesisSourceStatus `json:"status"`
 }
 
 // KinesisSourceSpec is the spec for a KinesisSource resource
 type KinesisSourceSpec struct {
-	StreamName    string `json:"stream_name"`
-	AccountRegion string `json:"account_region"`
-	AccountCreds  string `json:"account_creds"`
+	DeploymentName string `json:"deployment_name"`
+	Replicas       *int32 `json:"replicas"`
+	StreamName     string `json:"stream_name"`
+	AccountRegion  string `json:"account_region"`
+	AccountCreds   string `json:"account_creds"`
+}
+
+// KinesisSourceStatus is the status for a KinesisSource resource
+type KinesisSourceStatus struct {
+	AvailableReplicas int32 `json:"availableReplicas"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
