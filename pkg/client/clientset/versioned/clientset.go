@@ -28,6 +28,8 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	KinesissourceV1() kinesissourcev1.KinesissourceV1Interface
+	// Deprecated: please explicitly pick a version if possible.
+	Kinesissource() kinesissourcev1.KinesissourceV1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -39,6 +41,12 @@ type Clientset struct {
 
 // KinesissourceV1 retrieves the KinesissourceV1Client
 func (c *Clientset) KinesissourceV1() kinesissourcev1.KinesissourceV1Interface {
+	return c.kinesissourceV1
+}
+
+// Deprecated: Kinesissource retrieves the default version of KinesissourceClient.
+// Please explicitly pick a version.
+func (c *Clientset) Kinesissource() kinesissourcev1.KinesissourceV1Interface {
 	return c.kinesissourceV1
 }
 
