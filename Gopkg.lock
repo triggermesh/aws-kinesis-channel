@@ -45,14 +45,6 @@
   version = "v1.2.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:e2b86e41f3d669fc36b50d31d32d22c8ac656c75aa5ea89717ce7177e134ff2a"
-  name = "github.com/golang/glog"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
-
-[[projects]]
   digest = "1:2d0636a8c490d2272dd725db26f74a537111b99b9dbdda0d8b98febe63702aa4"
   name = "github.com/golang/protobuf"
   packages = [
@@ -95,21 +87,6 @@
   pruneopts = "NUT"
   revision = "f140a6486e521aad38f5917de355cbf147cc0496"
   version = "v1.0.0"
-
-[[projects]]
-  branch = "master"
-  digest = "1:a8674ea5ceb0c2a72a9b9518415b73d26d6c77aec49fe7fee78f15d6d137fc3a"
-  name = "github.com/google/licenseclassifier"
-  packages = [
-    ".",
-    "internal/sets",
-    "stringclassifier",
-    "stringclassifier/internal/pq",
-    "stringclassifier/searchset",
-    "stringclassifier/searchset/tokenizer",
-  ]
-  pruneopts = "NUT"
-  revision = "47b603fe1b8cf823b1227e0573cc620bf929a63b"
 
 [[projects]]
   digest = "1:459a00967aaf06edff3228e128dd243d7c91b0fc11ad2f7ceaa98f094bf66796"
@@ -170,14 +147,6 @@
   version = "v1.1.6"
 
 [[projects]]
-  branch = "master"
-  digest = "1:9f51202cf61d70c72775bc4ceacea479852a9f5feb78df7ea37fe10b40c9f655"
-  name = "github.com/knative/caching"
-  packages = ["pkg/apis/caching"]
-  pruneopts = "NUT"
-  revision = "b6c8f4851e3fb13987782cf8014316141e42fbd3"
-
-[[projects]]
   digest = "1:c1268aea893f96790dd9a23dc50feffb01beb8e6d89ae5240e6d2e3b962bd030"
   name = "github.com/knative/eventing"
   packages = [
@@ -196,7 +165,7 @@
   version = "v0.6.0"
 
 [[projects]]
-  digest = "1:cea2acc1831cde8a787389c8b37db817307bec908a5a655c133db87f4fcc85dc"
+  digest = "1:bfcd4f38d64f1ddd4f9de6b78a7394b8890700832914d854a73459a290e88c63"
   name = "github.com/knative/pkg"
   packages = [
     "apis",
@@ -204,9 +173,6 @@
     "apis/duck/v1alpha1",
     "apis/duck/v1beta1",
     "changeset",
-    "codegen/cmd/injection-gen",
-    "codegen/cmd/injection-gen/args",
-    "codegen/cmd/injection-gen/generators",
     "kmeta",
     "kmp",
     "logging",
@@ -215,17 +181,6 @@
   ]
   pruneopts = "NUT"
   revision = "0851b95f902d3706fb842fe3160fb697bf5a60e1"
-
-[[projects]]
-  branch = "master"
-  digest = "1:b42d6255c0409854d64f4ece0d64e8fcf963f93299408e017fd367d05fb297c1"
-  name = "github.com/knative/test-infra"
-  packages = [
-    "scripts",
-    "tools/dep-collector",
-  ]
-  pruneopts = "NUT"
-  revision = "1f95ba1bd8c59c1f4e2bb7148afb899d23d748d1"
 
 [[projects]]
   digest = "1:58999a98719fddbac6303cb17e8d85b945f60b72f48e3a2df6b950b97fa926f1"
@@ -302,14 +257,6 @@
   pruneopts = "NUT"
   revision = "438578804ca6f31be148c27683afc419ce47c06e"
   version = "v1.3.0"
-
-[[projects]]
-  digest = "1:d917313f309bda80d27274d53985bc65651f81a5b66b820749ac7f8ef061fd04"
-  name = "github.com/sergi/go-diff"
-  packages = ["diffmatchpatch"]
-  pruneopts = "NUT"
-  revision = "1744e2970ca51c86172c8190fadad617561ed6e7"
-  version = "v1.0.0"
 
 [[projects]]
   digest = "1:f4aaa07a6c33f2b354726d0571acbc8ca118837c75709f6353203ae1a3f8eeab"
@@ -440,27 +387,6 @@
   revision = "9d24e82272b4f38b78bc8cff74fa936d31ccd8ef"
 
 [[projects]]
-  branch = "master"
-  digest = "1:21d9323d5ae80d15770262eed40c48d6e335cb0b8bfb62894ea9dc343aa83720"
-  name = "golang.org/x/tools"
-  packages = [
-    "go/ast/astutil",
-    "go/gcexportdata",
-    "go/internal/gcimporter",
-    "go/internal/packagesdriver",
-    "go/packages",
-    "go/types/typeutil",
-    "imports",
-    "internal/fastwalk",
-    "internal/gopathwalk",
-    "internal/imports",
-    "internal/module",
-    "internal/semver",
-  ]
-  pruneopts = "NUT"
-  revision = "a101b041ded4588cfeb96c45f394050221b40f11"
-
-[[projects]]
   digest = "1:a4824d8df1fd1f63c6b3690bf4801d6ff1722adcb3e13c0489196a7e248d868a"
   name = "google.golang.org/appengine"
   packages = [
@@ -538,7 +464,7 @@
   version = "kubernetes-1.13.6"
 
 [[projects]]
-  digest = "1:9a320d5dc9a38edeb18d0106694da75e2ef4a346e0b5da9c98cdc75104439778"
+  digest = "1:b5d59431eeadfd1ca54617100921a1b31326ba8a0a0272c951d41d1315194927"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/equality",
@@ -577,7 +503,6 @@
     "pkg/util/net",
     "pkg/util/runtime",
     "pkg/util/sets",
-    "pkg/util/sets/types",
     "pkg/util/strategicpatch",
     "pkg/util/validation",
     "pkg/util/validation/field",
@@ -668,51 +593,6 @@
   version = "kubernetes-1.13.6"
 
 [[projects]]
-  digest = "1:ca4ed05b2bcf398379bf6e6e360591f544009757920f627dc706c48625384a6b"
-  name = "k8s.io/code-generator"
-  packages = [
-    "cmd/client-gen",
-    "cmd/client-gen/args",
-    "cmd/client-gen/generators",
-    "cmd/client-gen/generators/fake",
-    "cmd/client-gen/generators/scheme",
-    "cmd/client-gen/generators/util",
-    "cmd/client-gen/path",
-    "cmd/client-gen/types",
-    "cmd/deepcopy-gen",
-    "cmd/deepcopy-gen/args",
-    "cmd/defaulter-gen",
-    "cmd/defaulter-gen/args",
-    "cmd/informer-gen",
-    "cmd/informer-gen/args",
-    "cmd/informer-gen/generators",
-    "cmd/lister-gen",
-    "cmd/lister-gen/args",
-    "cmd/lister-gen/generators",
-    "pkg/util",
-  ]
-  pruneopts = "NUT"
-  revision = "b1289fc74931d4b6b04bd1a259acfc88a2cb0a66"
-  version = "kubernetes-1.12.6"
-
-[[projects]]
-  branch = "master"
-  digest = "1:39912eb5f8eaf46486faae0839586c27c93423e552f76875defa048f52c15c15"
-  name = "k8s.io/gengo"
-  packages = [
-    "args",
-    "examples/deepcopy-gen/generators",
-    "examples/defaulter-gen/generators",
-    "examples/set-gen/sets",
-    "generator",
-    "namer",
-    "parser",
-    "types",
-  ]
-  pruneopts = "NUT"
-  revision = "e17681d19d3ac4837a019ece36c2a0ec31ffe985"
-
-[[projects]]
   digest = "1:43099cc4ed575c40f80277c7ba7168df37d0c663bdc4f541325430bd175cce8a"
   name = "k8s.io/klog"
   packages = ["."]
@@ -740,13 +620,9 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/knative/caching/pkg/apis/caching",
     "github.com/knative/eventing/pkg/apis/eventing/v1alpha1",
     "github.com/knative/eventing/pkg/apis/sources/v1alpha1",
     "github.com/knative/eventing/pkg/client/clientset/versioned",
-    "github.com/knative/pkg/codegen/cmd/injection-gen",
-    "github.com/knative/test-infra/scripts",
-    "github.com/knative/test-infra/tools/dep-collector",
     "github.com/sirupsen/logrus",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/errors",
@@ -757,7 +633,6 @@
     "k8s.io/apimachinery/pkg/runtime/serializer",
     "k8s.io/apimachinery/pkg/types",
     "k8s.io/apimachinery/pkg/util/runtime",
-    "k8s.io/apimachinery/pkg/util/sets/types",
     "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/watch",
     "k8s.io/client-go/discovery",
@@ -770,11 +645,6 @@
     "k8s.io/client-go/tools/clientcmd",
     "k8s.io/client-go/util/flowcontrol",
     "k8s.io/client-go/util/workqueue",
-    "k8s.io/code-generator/cmd/client-gen",
-    "k8s.io/code-generator/cmd/deepcopy-gen",
-    "k8s.io/code-generator/cmd/defaulter-gen",
-    "k8s.io/code-generator/cmd/informer-gen",
-    "k8s.io/code-generator/cmd/lister-gen",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
