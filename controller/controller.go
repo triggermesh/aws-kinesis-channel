@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"time"
 
-	eventingApi "github.com/knative/eventing/pkg/apis/eventing/v1alpha1"
 	sourcesApi "github.com/knative/eventing/pkg/apis/sources/v1alpha1"
 
 	eventingClient "github.com/knative/eventing/pkg/client/clientset/versioned"
@@ -77,14 +76,12 @@ type Controller struct {
 
 // NewController returns a new kinesis controller
 func NewController(kubeclientset kubernetes.Interface,
-	eventingclientset eventingClient.Interface,
 	kinesisclientset clientset.Interface,
 	kinesisSourceInformer informers.KinesisSourceInformer) *Controller {
 
 	controller := &Controller{
 		kubeclientset:        kubeclientset,
 		kinesisclientset:     kinesisclientset,
-		eventingclientset:    eventingclientset,
 		kinesisSourcesLister: kinesisSourceInformer.Lister(),
 		kinesisSourcesSynced: kinesisSourceInformer.Informer().HasSynced,
 		workqueue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "KinesisSources"),
@@ -228,18 +225,7 @@ func (c *Controller) syncHandler(key string) error {
 		return nil
 	}
 
-	channel, err := c.eventingclientset.EventingV1alpha1().Channels(kinesisSource.Namespace).Create(newChannel(kinesisSource))
-	if k8sErrors.IsAlreadyExists(err) {
-		return nil
-		// channel, err := c.eventingclientset.EventingV1alpha1().Channels(kinesisSource.Namespace).Get(ksname, metav1.GetOptions{})
-		// if err != nil {
-		// 	return err
-		// }
-		// need to update channel properties here
-		//_, err = c.eventingclientset.EventingV1alpha1().Channels(kinesisSource.Namespace).Update(newChannel(kinesisSource))
-	}
-
-	_, err = c.eventingclientset.Sources().ContainerSources(kinesisSource.Namespace).Create(newContainerSource(kinesisSource, channel))
+	_, err = c.eventingclientset.Sources().ContainerSources(kinesisSource.Namespace).Create(newContainerSource(kinesisSource))
 	if k8sErrors.IsAlreadyExists(err) {
 		return nil
 	}
@@ -302,30 +288,7 @@ func (c *Controller) handleObject(obj interface{}) {
 // newChannel creates a new Channel for a KinesisSource resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the KinesisSource resource that 'owns' it.
-func newChannel(kinesisSource *kinesisv1.KinesisSource) *eventingApi.Channel {
-	return &eventingApi.Channel{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Channel",
-			APIVersion: "eventing.knative.dev/v1alpha1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kinesisSource.Name,
-			Namespace: kinesisSource.Namespace,
-		},
-		Spec: eventingApi.ChannelSpec{
-			Provisioner: &corev1.ObjectReference{
-				APIVersion: "eventing.knative.dev/v1alpha1",
-				Kind:       "ClusterChannelProvisioner",
-				Name:       "kinesis-source-channel",
-			},
-		},
-	}
-}
-
-// newChannel creates a new Channel for a KinesisSource resource. It also sets
-// the appropriate OwnerReferences on the resource so handleObject can discover
-// the KinesisSource resource that 'owns' it.
-func newContainerSource(kinesisSource *kinesisv1.KinesisSource, channel *eventingApi.Channel) *sourcesApi.ContainerSource {
+func newContainerSource(kinesisSource *kinesisv1.KinesisSource) *sourcesApi.ContainerSource {
 	return &sourcesApi.ContainerSource{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ContainerSource",
@@ -338,9 +301,9 @@ func newContainerSource(kinesisSource *kinesisv1.KinesisSource, channel *eventin
 		Spec: sourcesApi.ContainerSourceSpec{
 			Image: "gcr.io/triggermesh/awskinesis:latest",
 			Sink: &corev1.ObjectReference{
-				APIVersion: channel.APIVersion,
-				Name:       channel.Name,
-				Kind:       channel.Kind,
+				APIVersion: kinesisSource.APIVersion,
+				Name:       kinesisSource.Name,
+				Kind:       kinesisSource.Kind,
 			},
 			Env: []corev1.EnvVar{
 				corev1.EnvVar{
