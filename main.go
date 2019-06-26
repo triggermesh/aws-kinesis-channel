@@ -4,6 +4,7 @@ import (
 	"flag"
 	"time"
 
+	eventingApi "github.com/knative/eventing/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -43,6 +44,11 @@ func main() {
 		log.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
 
+	eventingClient, err := eventingApi.NewForConfig(cfg)
+	if err != nil {
+		log.Fatalf("Error building eventing clientset: %s", err.Error())
+	}
+
 	mainClient, err := clientset.NewForConfig(cfg)
 	if err != nil {
 		log.Fatalf("Error building example clientset: %s", err.Error())
@@ -50,7 +56,7 @@ func main() {
 
 	kinesissourceInformerFactory := informers.NewSharedInformerFactory(mainClient, time.Second*30)
 
-	baseController := controller.NewController(kubeClient, mainClient,
+	baseController := controller.NewController(kubeClient, eventingClient, mainClient,
 		kinesissourceInformerFactory.Kinesissource().V1().KinesisSources())
 
 	kinesissourceInformerFactory.Start(stopCh)

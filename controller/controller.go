@@ -76,12 +76,14 @@ type Controller struct {
 
 // NewController returns a new kinesis controller
 func NewController(kubeclientset kubernetes.Interface,
+	eventingclientset eventingClient.Interface,
 	kinesisclientset clientset.Interface,
 	kinesisSourceInformer informers.KinesisSourceInformer) *Controller {
 
 	controller := &Controller{
 		kubeclientset:        kubeclientset,
 		kinesisclientset:     kinesisclientset,
+		eventingclientset:    eventingclientset,
 		kinesisSourcesLister: kinesisSourceInformer.Lister(),
 		kinesisSourcesSynced: kinesisSourceInformer.Informer().HasSynced,
 		workqueue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "KinesisSources"),
