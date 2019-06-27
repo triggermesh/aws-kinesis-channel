@@ -3,11 +3,11 @@ package reconciler
 import (
 	"time"
 
-	clientset "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned"
-	kinesisScheme "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned/scheme"
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/logging/logkey"
 	"github.com/knative/pkg/system"
+	clientset "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned"
+	kinesisScheme "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned/scheme"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -17,6 +17,9 @@ import (
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
+
+	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 type Options struct {
@@ -50,7 +53,7 @@ func NewOptionsOrDie(cfg *rest.Config, logger *zap.SugaredLogger, stopCh <-chan 
 		KubeClientSet:    kubeClient,
 		DynamicClientSet: dynamicClient,
 		ConfigMapWatcher: configMapWatcher,
-		KinesisClientSet:   kinesisClient,
+		KinesisClientSet: kinesisClient,
 		Logger:           logger,
 		ResyncPeriod:     10 * time.Hour, // Based on controller-runtime default.
 		StopChannel:      stopCh,
@@ -132,7 +135,7 @@ func NewBase(opt Options, controllerAgentName string) *Base {
 	base := &Base{
 		KubeClientSet:    opt.KubeClientSet,
 		DynamicClientSet: opt.DynamicClientSet,
-		KinesisClientSet:   opt.KinesisClientSet,
+		KinesisClientSet: opt.KinesisClientSet,
 		ConfigMapWatcher: opt.ConfigMapWatcher,
 		Recorder:         recorder,
 		StatsReporter:    statsReporter,

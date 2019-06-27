@@ -17,6 +17,9 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+
+	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 const (
@@ -54,6 +57,7 @@ func main() {
 	const numControllers = 1
 	cfg.QPS = numControllers * rest.DefaultQPS
 	cfg.Burst = numControllers * rest.DefaultBurst
+
 	opt := reconciler.NewOptionsOrDie(cfg, logger, stopCh)
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(opt.KubeClientSet, opt.ResyncPeriod)
