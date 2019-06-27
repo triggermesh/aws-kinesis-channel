@@ -260,7 +260,7 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 	kc.Status.MarkEndpointsTrue()
 
 	// Reconcile the k8s service representing the actual Channel. It points to the Dispatcher service via ExternalName
-	svc, err := r.reconcileChannelService(ctx, nc)
+	svc, err := r.reconcileChannelService(ctx, kc)
 	if err != nil {
 		kc.Status.MarkChannelServiceFailed("ChannelServiceFailed", fmt.Sprintf("Channel Service failed: %s", err))
 		return err

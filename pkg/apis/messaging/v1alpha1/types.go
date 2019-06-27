@@ -25,7 +25,6 @@ import (
 )
 
 // +genclient
-// +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // KinesisChannel is a specification for a KinesisChannel resource
@@ -34,7 +33,7 @@ type KinesisChannel struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   KinesisChannelSpec   `json:"spec"`
-	Status KinesisChannelStatus `json:"status"`
+	Status KinesisChannelStatus `json:"status,omitempty"`
 }
 
 // KinesisChannelSpec is the spec for a KinesisChannel resource

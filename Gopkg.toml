@@ -16,14 +16,14 @@
 [[override]]
   name = "k8s.io/client-go"
   version = "kubernetes-1.13.6"
-  
-[[override]]
-  name = "contrib.go.opencensus.io/exporter/stackdriver"
-  version = "0.11.0"
+
+[[constraint]]
+ name = "go.opencensus.io"
+ version = "0.20.0"
 
 [[override]]
-  name = "contrib.go.opencensus.io/resource"
-  revision = "d49915945c0f6d4b2f04a34cdf043182e04c443a"
+ name = "contrib.go.opencensus.io/exporter/stackdriver"
+ version = "0.9.2"
 
 [prune]
   go-tests = true
