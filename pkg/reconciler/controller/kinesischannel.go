@@ -198,11 +198,6 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 	kc.Status.InitializeConditions()
 
 	logger := logging.FromContext(ctx)
-	// Verify channel is valid.
-	if err := kc.Validate(ctx); err != nil {
-		logger.Error("Invalid kinesis channel", zap.String("channel", kc.Name), zap.Error(err))
-		return err
-	}
 
 	// See if the channel has been deleted.
 	if kc.DeletionTimestamp != nil {
