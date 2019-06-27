@@ -32,7 +32,7 @@ const (
 	controllerAgentName = "kinesis-controller"
 )
 
-// ProvideController returns a Controller that represents the NATSS Provisioner.
+// ProvideController returns a Controller that represents the Kinesis Provisioner.
 func ProvideController(mgr manager.Manager, logger *zap.Logger) (controller.Controller, error) {
 	// Setup a new controller to Reconcile Channels that belong to this Cluster Provisioner
 	r := &reconciler{

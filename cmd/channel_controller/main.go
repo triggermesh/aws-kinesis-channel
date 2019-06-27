@@ -47,7 +47,7 @@ func main() {
 	//TODO Add check the connection with Kinesis stream
 
 	logger = logger.With(zap.String("controller/impl", "pkg"))
-	logger.Info("Starting the Natss controller")
+	logger.Info("Starting the Kinesis controller")
 
 	systemNS := system.Namespace()
 

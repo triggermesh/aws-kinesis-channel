@@ -73,7 +73,7 @@ type KinesisChannelList struct {
 	Items []KinesisChannel `json:"items"`
 }
 
-// GetGroupVersionKind returns GroupVersionKind for NatssChannels
+// GetGroupVersionKind returns GroupVersionKind for KinesisChannels
 func (c *KinesisChannel) GetGroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind("KinesisChannel")
 }
