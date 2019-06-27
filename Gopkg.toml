@@ -1,0 +1,31 @@
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+
+[[override]]
+  name = "github.com/knative/pkg"
+  revision = "0851b95f902d3706fb842fe3160fb697bf5a60e1"
+
+[[override]]
+  name = "k8s.io/api"
+  version = "kubernetes-1.13.6"
+
+[[override]]
+  name = "k8s.io/apimachinery"
+  version = "kubernetes-1.13.6"
+
+[[override]]
+  name = "k8s.io/client-go"
+  version = "kubernetes-1.13.6"
+  
+[[override]]
+  name = "contrib.go.opencensus.io/exporter/stackdriver"
+  version = "0.11.0"
+
+[[override]]
+  name = "contrib.go.opencensus.io/resource"
+  revision = "d49915945c0f6d4b2f04a34cdf043182e04c443a"
+
+[prune]
+  go-tests = true
+  unused-packages = true
+  non-go = true
