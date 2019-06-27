@@ -20,8 +20,8 @@ package fake
 
 import (
 	clientset "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned"
-	kinesissourcev1 "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned/typed/kinesissource/v1"
-	fakekinesissourcev1 "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned/typed/kinesissource/v1/fake"
+	messagingv1alpha1 "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned/typed/messaging/v1alpha1"
+	fakemessagingv1alpha1 "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned/typed/messaging/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -41,7 +41,7 @@ func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 		}
 	}
 
-	cs := &Clientset{}
+	cs := &Clientset{tracker: o}
 	cs.discovery = &fakediscovery.FakeDiscovery{Fake: &cs.Fake}
 	cs.AddReactor("*", "*", testing.ObjectReaction(o))
 	cs.AddWatchReactor("*", func(action testing.Action) (handled bool, ret watch.Interface, err error) {
@@ -63,20 +63,20 @@ func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 type Clientset struct {
 	testing.Fake
 	discovery *fakediscovery.FakeDiscovery
+	tracker   testing.ObjectTracker
 }
 
 func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 	return c.discovery
 }
 
-var _ clientset.Interface = &Clientset{}
-
-// KinesissourceV1 retrieves the KinesissourceV1Client
-func (c *Clientset) KinesissourceV1() kinesissourcev1.KinesissourceV1Interface {
-	return &fakekinesissourcev1.FakeKinesissourceV1{Fake: &c.Fake}
+func (c *Clientset) Tracker() testing.ObjectTracker {
+	return c.tracker
 }
 
-// Kinesissource retrieves the KinesissourceV1Client
-func (c *Clientset) Kinesissource() kinesissourcev1.KinesissourceV1Interface {
-	return &fakekinesissourcev1.FakeKinesissourceV1{Fake: &c.Fake}
+var _ clientset.Interface = &Clientset{}
+
+// MessagingV1alpha1 retrieves the MessagingV1alpha1Client
+func (c *Clientset) MessagingV1alpha1() messagingv1alpha1.MessagingV1alpha1Interface {
+	return &fakemessagingv1alpha1.FakeMessagingV1alpha1{Fake: &c.Fake}
 }

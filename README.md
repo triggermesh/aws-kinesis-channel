@@ -6,8 +6,8 @@ In case of any changes to types for the custom controller, use the following com
 
 ```
 ROOT_PACKAGE="github.com/triggermesh/aws-kinesis-provisioner"
-CUSTOM_RESOURCE_NAME="kinesissource"
-CUSTOM_RESOURCE_VERSION="v1"
+CUSTOM_RESOURCE_NAME="messaging"
+CUSTOM_RESOURCE_VERSION="v1alpha1"
 
 go get -u k8s.io/code-generator/...
 cd $GOPATH/src/k8s.io/code-generator
