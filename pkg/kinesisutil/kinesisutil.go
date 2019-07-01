@@ -17,49 +17,26 @@
 package kinesisutil
 
 import (
-	"errors"
-
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"go.uber.org/zap"
 )
 
 // Connect creates a new Kinesis-Streaming connection
-func Connect(client *kinesis.Kinesis, consumerARN, shardID *string, logger *zap.SugaredLogger) (*kinesis.SubscribeToShardEventStream, error) {
-	shardSubscription, err := client.SubscribeToShard(&kinesis.SubscribeToShardInput{
-		ConsumerARN: consumerARN,
-		ShardId:     shardID,
+func Connect(accountAccessKeyID, accountSecretAccessKey, region, streamName string, logger *zap.SugaredLogger) (*kinesis.Kinesis, error) {
+	sess, err := session.NewSession(&aws.Config{
+		Region:      aws.String(region),
+		Credentials: credentials.NewStaticCredentials(accountAccessKeyID, accountSecretAccessKey, ""),
+		MaxRetries:  aws.Int(5),
 	})
 	if err != nil {
-		logger.Errorf("Connect(): create new connection to kinesis stream failed: %v", err)
+		logger.Errorf("Connect(): create new session failed: %v", err)
 		return nil, err
 	}
-	logger.Infof("Connect(): connection to Kinesis stream established, Conn=%+v", shardSubscription)
-	return shardSubscription.EventStream, nil
-}
 
-// Close must be the last call to close the connection
-func Close(streamConn *kinesis.SubscribeToShardEventStream, logger *zap.SugaredLogger) (err error) {
-
-	if streamConn == nil {
-		err = errors.New("can't close empty connection")
-		return
-	}
-	err = (*streamConn).Close()
-	if err != nil {
-		logger.Errorf("Can't close connection: %+v", err)
-	}
-	return
-}
-
-// Publish a message to a subject
-func Publish(client *kinesis.Kinesis, streamName, partitionKey *string, msg []byte, logger *zap.SugaredLogger) (err error) {
-	_, err = client.PutRecord(&kinesis.PutRecordInput{
-		Data:         msg,
-		PartitionKey: partitionKey,
-		StreamName:   streamName,
-	})
-	if err != nil {
-		logger.Errorf("Can't publish message to kinesis: %+v", err)
-	}
-	return
+	kinesis := kinesis.New(sess)
+	logger.Infof("Connect(): connection to Kinesis stream established, Conn=%+v", kinesis)
+	return kinesis, nil
 }
