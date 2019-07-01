@@ -42,11 +42,18 @@ type Options struct {
 var resetPeriod = 30 * time.Second
 
 func NewOptionsOrDie(cfg *rest.Config, logger *zap.SugaredLogger, stopCh <-chan struct{}) Options {
-	kubeClient := kubernetes.NewForConfigOrDie(cfg)
-	dynamicClient := dynamic.NewForConfigOrDie(cfg)
-
-	kinesisClient := clientset.NewForConfigOrDie(cfg)
-
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		panic(err)
+	}
+	dynamicClient, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		panic(err)
+	}
+	kinesisClient, err := clientset.NewForConfig(cfg)
+	if err != nil {
+		panic(err)
+	}
 	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace())
 
 	return Options{

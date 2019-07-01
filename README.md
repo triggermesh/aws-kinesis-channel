@@ -19,6 +19,10 @@ cd $GOPATH/src/k8s.io/code-generator
 ## Run localy 
 
 To run the controller:
+```
+export SYSTEM_NAMESPACE=default
+```
+
 ``` 
 go run cmd/channel_controller/main.go -kubeconfig="$HOME/.kube/config" -hardCodedLoggingConfig=true
 ```
