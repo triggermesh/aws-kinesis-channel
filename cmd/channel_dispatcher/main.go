@@ -20,17 +20,16 @@ import (
 	"flag"
 	"log"
 
-	"github.com/knative/eventing/pkg/tracing"
-	clientset "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned"
-	informers "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/informers/externalversions"
-	"github.com/triggermesh/aws-kinesis-provisioner/pkg/dispatcher"
-	"github.com/triggermesh/aws-kinesis-provisioner/pkg/reconciler"
-	kinesischannel "github.com/triggermesh/aws-kinesis-provisioner/pkg/reconciler/dispatcher"
 	"github.com/knative/eventing/pkg/logconfig"
 	"github.com/knative/pkg/configmap"
 	kncontroller "github.com/knative/pkg/controller"
 	"github.com/knative/pkg/logging"
 	"github.com/knative/pkg/signals"
+	clientset "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned"
+	informers "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/informers/externalversions"
+	"github.com/triggermesh/aws-kinesis-provisioner/pkg/dispatcher"
+	"github.com/triggermesh/aws-kinesis-provisioner/pkg/reconciler"
+	kinesischannel "github.com/triggermesh/aws-kinesis-provisioner/pkg/reconciler/dispatcher"
 	"go.uber.org/zap"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -44,7 +43,7 @@ var (
 
 func main() {
 	flag.Parse()
-	logger, atomicLevel := setupLogger()
+	logger, _ := setupLogger()
 	defer logger.Sync()
 
 	// set up signals so we handle the first shutdown signal gracefully
@@ -82,26 +81,6 @@ func main() {
 			kinesisDispatcher,
 			kinesisChannelInformer,
 		),
-	}
-	// This line asserts at compile time that the length of controllers is equal to numControllers.
-	// It is based on https://go101.org/article/tips.html#assert-at-compile-time, which notes that
-	// var _ [N-M]int
-	// asserts at compile time that N >= M, which we can use to establish equality of N and M:
-	// (N >= M) && (M >= N) => (N == M)
-	var _ [numControllers - len(controllers)][len(controllers) - numControllers]int
-
-	// Watch the logging config map and dynamically update logging levels.
-	opt.ConfigMapWatcher.Watch(logconfig.ConfigMapName(), logging.UpdateLevelFromConfigMap(logger, atomicLevel, logconfig.Controller))
-	// TODO: Watch the observability config map and dynamically update metrics exporter.
-	//opt.ConfigMapWatcher.Watch(metrics.ObservabilityConfigName, metrics.UpdateExporterFromConfigMap(component, logger))
-
-	// Setup zipkin tracing.
-	if err = tracing.SetupDynamicZipkinPublishing(logger, opt.ConfigMapWatcher, "kinesis-ch-dispatcher"); err != nil {
-		logger.Fatalw("Error setting up Zipkin publishing", zap.Error(err))
-	}
-
-	if err := opt.ConfigMapWatcher.Start(stopCh); err != nil {
-		logger.Fatalw("failed to start configuration manager", zap.Error(err))
 	}
 
 	// Start all of the informers and wait for them to sync.
