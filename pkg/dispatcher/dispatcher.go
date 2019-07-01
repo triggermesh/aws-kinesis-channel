@@ -18,7 +18,6 @@ package dispatcher
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -53,7 +52,7 @@ type SubscriptionsSupervisor struct {
 	dispatcher *provisioners.MessageDispatcher
 
 	subscriptionsMux sync.Mutex
-	subscriptions    map[provisioners.ChannelReference]map[subscriptionReference]*stan.Subscription
+	subscriptions    map[provisioners.ChannelReference]map[subscriptionReference]*kinesis.Consumer
 
 	connect                chan struct{}
 	accountAccessKeyID     string
@@ -79,7 +78,7 @@ func NewDispatcher(accountAccessKeyID, accountSecretAccessKey, region, streamNam
 		accountSecretAccessKey: accountSecretAccessKey,
 		region:                 region,
 		streamName:             streamName,
-		subscriptions:          make(map[provisioners.ChannelReference]map[subscriptionReference]*stan.Subscription),
+		subscriptions:          make(map[provisioners.ChannelReference]map[subscriptionReference]*kinesis.Consumer),
 	}
 	d.setHostToChannelMap(map[string]provisioners.ChannelReference{})
 	receiver, err := provisioners.NewMessageReceiver(
@@ -106,28 +105,19 @@ func createReceiverFunction(s *SubscriptionsSupervisor, logger *zap.SugaredLogge
 	return func(channel provisioners.ChannelReference, m *provisioners.Message) error {
 		logger.Infof("Received message from %q channel", channel.String())
 		// publish to kinesis
-		ch := getSubject(channel)
-		message, err := json.Marshal(m)
-		if err != nil {
-			logger.Errorf("Error during marshaling of the message: %v", err)
-			return err
-		}
+		// ch := getSubject(channel)
+		// message, err := json.Marshal(m)
+		// if err != nil {
+		// 	logger.Errorf("Error during marshaling of the message: %v", err)
+		// 	return err
+		// }
 		s.kinesisConnMux.Lock()
 		currentkinesisConn := s.kinesisConn
 		s.kinesisConnMux.Unlock()
 		if currentkinesisConn == nil {
 			return fmt.Errorf("No Connection to kinesis")
 		}
-		if err := kinesisutil.Publish(currentkinesisConn, ch, &message, logger); err != nil {
-			logger.Errorf("Error during publish: %v", err)
-			if err.Error() == stan.ErrConnectionClosed.Error() {
-				logger.Error("Connection to kinesis has been lost, attempting to reconnect.")
-				// Informing SubscriptionsSupervisor to re-establish connection to kinesis.
-				s.signalReconnect()
-				return err
-			}
-			return err
-		}
+		//put message here
 		logger.Infof("Published [%s] : '%s'", channel.String(), m.Headers)
 		return nil
 	}
@@ -215,7 +205,7 @@ func (s *SubscriptionsSupervisor) UpdateSubscriptions(channel *eventingv1alpha1.
 
 	chMap, ok := s.subscriptions[cRef]
 	if !ok {
-		chMap = make(map[subscriptionReference]*stan.Subscription)
+		chMap = make(map[subscriptionReference]*kinesis.Consumer)
 		s.subscriptions[cRef] = chMap
 	}
 	var errStrings []string
@@ -263,60 +253,46 @@ func toSubscriberStatus(subSpec *v1alpha1.SubscriberSpec, condition corev1.Condi
 	}
 }
 
-func (s *SubscriptionsSupervisor) subscribe(channel provisioners.ChannelReference, subscription subscriptionReference) (*stan.Subscription, error) {
+func (s *SubscriptionsSupervisor) subscribe(channel provisioners.ChannelReference, subscription subscriptionReference) (*kinesis.Consumer, error) {
 	s.logger.Info("Subscribe to channel:", zap.Any("channel", channel), zap.Any("subscription", subscription))
 
-	mcb := func(msg *stan.Msg) {
-		message := provisioners.Message{}
-		if err := json.Unmarshal(msg.Data, &message); err != nil {
-			s.logger.Error("Failed to unmarshal message: ", zap.Error(err))
-			return
-		}
-		s.logger.Sugar().Infof("kinesis message received from subject: %v; sequence: %v; timestamp: %v, headers: '%s'", msg.Subject, msg.Sequence, msg.Timestamp, message.Headers)
-		if err := s.dispatcher.DispatchMessage(&message, subscription.SubscriberURI, subscription.ReplyURI, provisioners.DispatchDefaults{Namespace: channel.Namespace}); err != nil {
-			s.logger.Error("Failed to dispatch message: ", zap.Error(err))
-			return
-		}
-		if err := msg.Ack(); err != nil {
-			s.logger.Error("Failed to acknowledge message: ", zap.Error(err))
-		}
-	}
-	// subscribe to a kinesis subject
-	ch := getSubject(channel)
-	sub := subscription.String()
-	s.kinesisConnMux.Lock()
-	currentkinesisConn := s.kinesisConn
-	s.kinesisConnMux.Unlock()
-	if currentkinesisConn == nil {
-		return nil, fmt.Errorf("No Connection to kinesis")
-	}
-	kinesisSub, err := (*currentkinesisConn).Subscribe(ch, mcb, stan.DurableName(sub), stan.SetManualAckMode(), stan.AckWait(1*time.Minute))
-	if err != nil {
-		s.logger.Error(" Create new kinesis Subscription failed: ", zap.Error(err))
-		if err.Error() == stan.ErrConnectionClosed.Error() {
-			s.logger.Error("Connection to kinesis has been lost, attempting to reconnect.")
-			// Informing SubscriptionsSupervisor to re-establish connection to Kinesis
-			s.signalReconnect()
-			return nil, err
-		}
-		return nil, err
-	}
-	s.logger.Sugar().Infof("kinesis Subscription created: %+v", kinesisSub)
-	return &kinesisSub, nil
+	// mcb := func(msg *kinesis.Record) {
+	// 	message := provisioners.Message{}
+	// 	if err := json.Unmarshal(msg.Data, &message); err != nil {
+	// 		s.logger.Error("Failed to unmarshal message: ", zap.Error(err))
+	// 		return
+	// 	}
+	// 	s.logger.Sugar().Infof("kinesis message received from shard: %v; sequence: %v; timestamp: %v, encryption: '%s'", msg.PartitionKey, msg.SequenceNumber, msg.ApproximateArrivalTimestamp, msg.EncryptionType)
+	// 	if err := s.dispatcher.DispatchMessage(&message, subscription.SubscriberURI, subscription.ReplyURI, provisioners.DispatchDefaults{Namespace: channel.Namespace}); err != nil {
+	// 		s.logger.Error("Failed to dispatch message: ", zap.Error(err))
+	// 		return
+	// 	}
+	// }
+	// // subscribe to a kinesis subject
+	// ch := getSubject(channel)
+	// sub := subscription.String()
+	// s.kinesisConnMux.Lock()
+	// currentkinesisConn := s.kinesisConn
+	// s.kinesisConnMux.Unlock()
+	// if currentkinesisConn == nil {
+	// 	return nil, fmt.Errorf("No Connection to kinesis")
+	// }
+	// need to create kinesis subscription
+	return nil, nil
 }
 
 // should be called only while holding subscriptionsMux
 func (s *SubscriptionsSupervisor) unsubscribe(channel provisioners.ChannelReference, subscription subscriptionReference) error {
 	s.logger.Info("Unsubscribe from channel:", zap.Any("channel", channel), zap.Any("subscription", subscription))
 
-	if stanSub, ok := s.subscriptions[channel][subscription]; ok {
-		// delete from kinesis
-		if err := (*stanSub).Unsubscribe(); err != nil {
-			s.logger.Error("Unsubscribing kinesis Streaming subscription failed: ", zap.Error(err))
-			return err
-		}
-		delete(s.subscriptions[channel], subscription)
-	}
+	// if stanSub, ok := s.subscriptions[channel][subscription]; ok {
+	// 	// delete from kinesis
+	// 	if err := (*stanSub).Unsubscribe(); err != nil {
+	// 		s.logger.Error("Unsubscribing kinesis Streaming subscription failed: ", zap.Error(err))
+	// 		return err
+	// 	}
+	// 	delete(s.subscriptions[channel], subscription)
+	// }
 	return nil
 }
 

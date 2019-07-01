@@ -21,9 +21,6 @@ import (
 	"log"
 
 	"github.com/knative/eventing/pkg/tracing"
-
-	"github.com/triggermesh/aws-kinesis-provisioner/pkg/util"
-
 	clientset "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned"
 	informers "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/informers/externalversions"
 	"github.com/triggermesh/aws-kinesis-provisioner/pkg/dispatcher"

@@ -34,7 +34,7 @@
   revision = "d49915945c0f6d4b2f04a34cdf043182e04c443a"
 
 [[projects]]
-  digest = "1:ca1f69b4d7d2a163873c3d7978d982e6a51d06300975fa0abdd54c81601d3e01"
+  digest = "1:d4ca8a800a843c4f403026731137d73f7ebd4726df6538b535fbdd3fa80fc869"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -61,11 +61,15 @@
     "internal/sdkuri",
     "internal/shareddefaults",
     "private/protocol",
+    "private/protocol/eventstream",
+    "private/protocol/eventstream/eventstreamapi",
     "private/protocol/json/jsonutil",
+    "private/protocol/jsonrpc",
     "private/protocol/query",
     "private/protocol/query/queryutil",
     "private/protocol/rest",
     "private/protocol/xml/xmlutil",
+    "service/kinesis",
     "service/sts",
   ]
   pruneopts = "NUT"
@@ -281,16 +285,22 @@
   version = "v1.1.6"
 
 [[projects]]
-  digest = "1:d1944aea2e383a2aea45bb603d93539cc4d13f81d2fbf9cd84b69e6c4b3fdd2b"
+  digest = "1:d698155c38e3bd38ff3a728e97cea698d3e4e8135950910b9affd5759589eb49"
   name = "github.com/knative/eventing"
   packages = [
     "pkg/apis/duck/v1alpha1",
     "pkg/apis/eventing",
     "pkg/apis/eventing/v1alpha1",
+    "pkg/channelwatcher",
+    "pkg/configmap",
     "pkg/logconfig",
     "pkg/logging",
     "pkg/provisioners",
+    "pkg/provisioners/fanout",
+    "pkg/provisioners/multichannelfanout",
+    "pkg/provisioners/swappable",
     "pkg/reconciler/names",
+    "pkg/tracing",
     "pkg/utils",
   ]
   pruneopts = "NUT"
@@ -364,10 +374,13 @@
   version = "1.0.1"
 
 [[projects]]
-  digest = "1:1904e7dd4a67274b95147e9a663432d1c523ea98f8c948bb3a67d4ce1dd346b6"
+  digest = "1:8a081d96c4071c8bddcecf81bfdf84e0acfebd04d2eedc128f49e23b48308026"
   name = "github.com/openzipkin/zipkin-go"
   packages = [
+    ".",
+    "idgenerator",
     "model",
+    "propagation",
     "reporter",
     "reporter/http",
   ]
@@ -1059,12 +1072,20 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/aws/aws-sdk-go/aws",
+    "github.com/aws/aws-sdk-go/aws/credentials",
+    "github.com/aws/aws-sdk-go/aws/session",
+    "github.com/aws/aws-sdk-go/service/kinesis",
     "github.com/knative/eventing/pkg/apis/duck/v1alpha1",
     "github.com/knative/eventing/pkg/apis/eventing/v1alpha1",
+    "github.com/knative/eventing/pkg/channelwatcher",
     "github.com/knative/eventing/pkg/logconfig",
     "github.com/knative/eventing/pkg/logging",
     "github.com/knative/eventing/pkg/provisioners",
+    "github.com/knative/eventing/pkg/provisioners/fanout",
+    "github.com/knative/eventing/pkg/provisioners/multichannelfanout",
     "github.com/knative/eventing/pkg/reconciler/names",
+    "github.com/knative/eventing/pkg/tracing",
     "github.com/knative/eventing/pkg/utils",
     "github.com/knative/pkg/apis",
     "github.com/knative/pkg/apis/duck/v1alpha1",
@@ -1091,6 +1112,7 @@
     "k8s.io/apimachinery/pkg/runtime/serializer",
     "k8s.io/apimachinery/pkg/types",
     "k8s.io/apimachinery/pkg/util/runtime",
+    "k8s.io/apimachinery/pkg/util/sets",
     "k8s.io/apimachinery/pkg/watch",
     "k8s.io/client-go/discovery",
     "k8s.io/client-go/discovery/fake",
