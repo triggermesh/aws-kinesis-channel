@@ -36,7 +36,7 @@ var (
 
 func main() {
 	flag.Parse()
-	logger, atomicLevel := setupLogger()
+	logger, _ := setupLogger()
 	defer logger.Sync()
 
 	// set up signals so we handle the first shutdown signal gracefully
@@ -90,14 +90,6 @@ func main() {
 	// asserts at compile time that N >= M, which we can use to establish equality of N and M:
 	// (N >= M) && (M >= N) => (N == M)
 	var _ [numControllers - len(controllers)][len(controllers) - numControllers]int
-
-	// Watch the logging config map and dynamically update logging levels.
-	opt.ConfigMapWatcher.Watch(logconfig.ConfigMapName(), logging.UpdateLevelFromConfigMap(logger, atomicLevel, logconfig.Controller))
-	// TODO: Watch the observability config map and dynamically update metrics exporter.
-	//opt.ConfigMapWatcher.Watch(metrics.ObservabilityConfigName, metrics.UpdateExporterFromConfigMap(component, logger))
-	if err := opt.ConfigMapWatcher.Start(stopCh); err != nil {
-		logger.Fatalw("failed to start configuration manager", zap.Error(err))
-	}
 
 	// Start all of the informers and wait for them to sync.
 	logger.Info("Starting informers.")
