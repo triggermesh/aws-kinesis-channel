@@ -40,3 +40,13 @@ func Connect(accountAccessKeyID, accountSecretAccessKey, region, streamName stri
 	logger.Infof("Connect(): connection to Kinesis stream established, Conn=%+v", kinesis)
 	return kinesis, nil
 }
+
+// Publish publishes msg to Kinesis
+func Publish(client *kinesis.Kinesis, partitionKey, streamName *string, msg []byte, logger *zap.SugaredLogger) error {
+	_, err := client.PutRecord(&kinesis.PutRecordInput{
+		Data:         msg,
+		PartitionKey: partitionKey,
+		StreamName:   streamName,
+	})
+	return err
+}

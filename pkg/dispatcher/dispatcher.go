@@ -18,6 +18,7 @@ package dispatcher
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -65,7 +66,7 @@ type SubscriptionsSupervisor struct {
 	kinesisConn           *kinesis.Kinesis
 	kinesisConnInProgress bool
 
-	hostToChannelMap atomic.Value 
+	hostToChannelMap atomic.Value
 }
 
 // NewDispatcher returns a new SubscriptionsSupervisor.
@@ -104,20 +105,23 @@ func (s *SubscriptionsSupervisor) signalReconnect() {
 func createReceiverFunction(s *SubscriptionsSupervisor, logger *zap.SugaredLogger) func(provisioners.ChannelReference, *provisioners.Message) error {
 	return func(channel provisioners.ChannelReference, m *provisioners.Message) error {
 		logger.Infof("Received message from %q channel", channel.String())
-		// publish to kinesis
-		// ch := getSubject(channel)
-		// message, err := json.Marshal(m)
-		// if err != nil {
-		// 	logger.Errorf("Error during marshaling of the message: %v", err)
-		// 	return err
-		// }
+		//publish to kinesis
+		ch := getSubject(channel)
+		message, err := json.Marshal(m)
+		if err != nil {
+			logger.Errorf("Error during marshaling of the message: %v", err)
+			return err
+		}
 		s.kinesisConnMux.Lock()
 		currentkinesisConn := s.kinesisConn
 		s.kinesisConnMux.Unlock()
 		if currentkinesisConn == nil {
 			return fmt.Errorf("No Connection to kinesis")
 		}
-		//put message here
+		if err := kinesisutil.Publish(currentkinesisConn, &ch, &s.streamName, message, logger); err != nil {
+			logger.Errorf("Error during publish: %v", err)
+			return err
+		}
 		logger.Infof("Published [%s] : '%s'", channel.String(), m.Headers)
 		return nil
 	}
