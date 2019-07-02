@@ -42,7 +42,7 @@ func Connect(accountAccessKeyID, accountSecretAccessKey, region string, logger *
 	return kinesis, nil
 }
 
-func Exist(client *kinesis.Kinesis, streamName *string) (*kinesis.StreamDescription, error) {
+func Describe(client *kinesis.Kinesis, streamName *string) (*kinesis.StreamDescription, error) {
 	res, err := client.DescribeStream(&kinesis.DescribeStreamInput{
 		StreamName: streamName,
 	})

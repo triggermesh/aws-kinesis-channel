@@ -258,29 +258,38 @@ func toSubscriberStatus(subSpec *v1alpha1.SubscriberSpec, condition corev1.Condi
 func (s *SubscriptionsSupervisor) subscribe(channel provisioners.ChannelReference, subscription subscriptionReference) (*kinesis.StreamDescription, error) {
 	s.logger.Info("Subscribe to channel:", zap.Any("channel", channel), zap.Any("subscription", subscription))
 
-	// mcb := func(msg *kinesis.Record) {
-	// 	message := provisioners.Message{}
-	// 	if err := json.Unmarshal(msg.Data, &message); err != nil {
-	// 		s.logger.Error("Failed to unmarshal message: ", zap.Error(err))
-	// 		return
-	// 	}
-	// 	s.logger.Sugar().Infof("kinesis message received from shard: %v; sequence: %v; timestamp: %v, encryption: '%s'", msg.PartitionKey, msg.SequenceNumber, msg.ApproximateArrivalTimestamp, msg.EncryptionType)
-	// 	if err := s.dispatcher.DispatchMessage(&message, subscription.SubscriberURI, subscription.ReplyURI, provisioners.DispatchDefaults{Namespace: channel.Namespace}); err != nil {
-	// 		s.logger.Error("Failed to dispatch message: ", zap.Error(err))
-	// 		return
-	// 	}
-	// }
-	// // subscribe to a kinesis subject
-	// ch := getSubject(channel)
-	// sub := subscription.String()
-	// s.kinesisConnMux.Lock()
-	// currentkinesisConn := s.kinesisConn
-	// s.kinesisConnMux.Unlock()
-	// if currentkinesisConn == nil {
-	// 	return nil, fmt.Errorf("No Connection to kinesis")
-	// }
-	// need to create kinesis subscription
-	return nil, nil
+	// create kinesis stream
+	streamName := getSubject(channel)
+	s.kinesisConnMux.Lock()
+	currentkinesisConn := s.kinesisConn
+	s.kinesisConnMux.Unlock()
+	if currentkinesisConn == nil {
+		return nil, fmt.Errorf("No Connection to kinesis")
+	}
+
+	err := kinesisutil.Create(s.kinesisConn, &streamName)
+	if err != nil {
+		return nil, err
+	}
+
+	stream, err := kinesisutil.Describe(s.kinesisConn, &streamName)
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		if *stream.StreamStatus != "ACTIVE" {
+			time.Sleep(10 * time.Second)
+			stream, err = kinesisutil.Describe(s.kinesisConn, &streamName)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			break
+		}
+	}
+
+	return stream, nil
 }
 
 // should be called only while holding subscriptionsMux
