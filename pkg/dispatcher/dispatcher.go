@@ -53,7 +53,7 @@ type SubscriptionsSupervisor struct {
 	dispatcher *provisioners.MessageDispatcher
 
 	subscriptionsMux sync.Mutex
-	subscriptions    map[provisioners.ChannelReference]map[subscriptionReference]*kinesis.Consumer
+	subscriptions    map[provisioners.ChannelReference]map[subscriptionReference]*kinesis.StreamDescription
 
 	connect                chan struct{}
 	accountAccessKeyID     string
@@ -77,7 +77,7 @@ func NewDispatcher(accountAccessKeyID, accountSecretAccessKey, region string, lo
 		accountAccessKeyID:     accountAccessKeyID,
 		accountSecretAccessKey: accountSecretAccessKey,
 		region:                 region,
-		subscriptions:          make(map[provisioners.ChannelReference]map[subscriptionReference]*kinesis.Consumer),
+		subscriptions:          make(map[provisioners.ChannelReference]map[subscriptionReference]*kinesis.StreamDescription),
 	}
 	d.setHostToChannelMap(map[string]provisioners.ChannelReference{})
 	receiver, err := provisioners.NewMessageReceiver(
@@ -207,7 +207,7 @@ func (s *SubscriptionsSupervisor) UpdateSubscriptions(channel *eventingv1alpha1.
 
 	chMap, ok := s.subscriptions[cRef]
 	if !ok {
-		chMap = make(map[subscriptionReference]*kinesis.Consumer)
+		chMap = make(map[subscriptionReference]*kinesis.StreamDescription)
 		s.subscriptions[cRef] = chMap
 	}
 	var errStrings []string
@@ -255,7 +255,7 @@ func toSubscriberStatus(subSpec *v1alpha1.SubscriberSpec, condition corev1.Condi
 	}
 }
 
-func (s *SubscriptionsSupervisor) subscribe(channel provisioners.ChannelReference, subscription subscriptionReference) (*kinesis.Consumer, error) {
+func (s *SubscriptionsSupervisor) subscribe(channel provisioners.ChannelReference, subscription subscriptionReference) (*kinesis.StreamDescription, error) {
 	s.logger.Info("Subscribe to channel:", zap.Any("channel", channel), zap.Any("subscription", subscription))
 
 	// mcb := func(msg *kinesis.Record) {

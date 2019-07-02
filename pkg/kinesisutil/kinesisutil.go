@@ -42,16 +42,14 @@ func Connect(accountAccessKeyID, accountSecretAccessKey, region string, logger *
 	return kinesis, nil
 }
 
-func Exist(client *kinesis.Kinesis, streamName *string) (bool, error) {
-	_, err := client.DescribeStream(&kinesis.DescribeStreamInput{
+func Exist(client *kinesis.Kinesis, streamName *string) (*kinesis.StreamDescription, error) {
+	res, err := client.DescribeStream(&kinesis.DescribeStreamInput{
 		StreamName: streamName,
 	})
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	return true, nil
-	//TODO maybe need to check stream status, if it is not ACTIVE, return false and no error, or
-	// should probably return stream in the responce to check status and other params later in logic
+	return res.StreamDescription, nil
 }
 
 func Create(client *kinesis.Kinesis, streamName *string) error {
