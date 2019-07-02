@@ -287,14 +287,14 @@ func (s *SubscriptionsSupervisor) subscribe(channel provisioners.ChannelReferenc
 func (s *SubscriptionsSupervisor) unsubscribe(channel provisioners.ChannelReference, subscription subscriptionReference) error {
 	s.logger.Info("Unsubscribe from channel:", zap.Any("channel", channel), zap.Any("subscription", subscription))
 
-	// if stanSub, ok := s.subscriptions[channel][subscription]; ok {
-	// 	// delete from kinesis
-	// 	if err := (*stanSub).Unsubscribe(); err != nil {
-	// 		s.logger.Error("Unsubscribing kinesis Streaming subscription failed: ", zap.Error(err))
-	// 		return err
-	// 	}
-	// 	delete(s.subscriptions[channel], subscription)
-	// }
+	if subsc, ok := s.subscriptions[channel][subscription]; ok {
+		// delete from kinesis
+		err := kinesisutil.Delete(s.kinesisConn, subsc.StreamName)
+		if err != nil {
+			return err
+		}
+		delete(s.subscriptions[channel], subscription)
+	}
 	return nil
 }
 
