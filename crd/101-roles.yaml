@@ -23,8 +23,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: kinesis-controller-role
 rules:
-  - apiGroups: ["triggermesh.dev", "sources.eventing.knative.dev"]
-    resources: ["kinesissources", "containersources"]
+  - apiGroups: ["messaging.triggermesh.dev", "sources.eventing.knative.dev"]
+    resources: ["kinesischannels", "containersources"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

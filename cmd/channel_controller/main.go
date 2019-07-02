@@ -25,7 +25,6 @@ import (
 const (
 	dispatcherDeploymentName = "kinesis-ch-dispatcher"
 	dispatcherServiceName    = "kinesis-ch-dispatcher"
-	clientID                 = "kinesis-ch-controller"
 )
 
 var (
