@@ -59,7 +59,6 @@ type SubscriptionsSupervisor struct {
 	accountAccessKeyID     string
 	accountSecretAccessKey string
 	region                 string
-	streamName             string
 	// kinesisConnMux is used to protect kinesisConn and kinesisConnInProgress during
 	// the transition from not connected to connected states.
 	kinesisConnMux        sync.Mutex
@@ -70,7 +69,7 @@ type SubscriptionsSupervisor struct {
 }
 
 // NewDispatcher returns a new SubscriptionsSupervisor.
-func NewDispatcher(accountAccessKeyID, accountSecretAccessKey, region, streamName string, logger *zap.Logger) (*SubscriptionsSupervisor, error) {
+func NewDispatcher(accountAccessKeyID, accountSecretAccessKey, region string, logger *zap.Logger) (*SubscriptionsSupervisor, error) {
 	d := &SubscriptionsSupervisor{
 		logger:                 logger,
 		dispatcher:             provisioners.NewMessageDispatcher(logger.Sugar()),
@@ -78,7 +77,6 @@ func NewDispatcher(accountAccessKeyID, accountSecretAccessKey, region, streamNam
 		accountAccessKeyID:     accountAccessKeyID,
 		accountSecretAccessKey: accountSecretAccessKey,
 		region:                 region,
-		streamName:             streamName,
 		subscriptions:          make(map[provisioners.ChannelReference]map[subscriptionReference]*kinesis.Consumer),
 	}
 	d.setHostToChannelMap(map[string]provisioners.ChannelReference{})
@@ -118,7 +116,7 @@ func createReceiverFunction(s *SubscriptionsSupervisor, logger *zap.SugaredLogge
 		if currentkinesisConn == nil {
 			return fmt.Errorf("No Connection to kinesis")
 		}
-		if err := kinesisutil.Publish(currentkinesisConn, &ch, &s.streamName, message, logger); err != nil {
+		if err := kinesisutil.Publish(currentkinesisConn, &ch, message, logger); err != nil {
 			logger.Errorf("Error during publish: %v", err)
 			return err
 		}
@@ -140,7 +138,7 @@ func (s *SubscriptionsSupervisor) connectWithRetry(stopCh <-chan struct{}) {
 	ticker := time.NewTicker(retryInterval)
 	defer ticker.Stop()
 	for {
-		kConn, err := kinesisutil.Connect(s.accountAccessKeyID, s.accountSecretAccessKey, s.region, s.streamName, s.logger.Sugar())
+		kConn, err := kinesisutil.Connect(s.accountAccessKeyID, s.accountSecretAccessKey, s.region, s.logger.Sugar())
 		if err == nil {
 			// Locking here in order to reduce time in locked state.
 			s.kinesisConnMux.Lock()

@@ -54,7 +54,7 @@ func main() {
 		logger.Fatalw("Error building kubeconfig", zap.Error(err))
 	}
 
-	kinesisDispatcher, err := dispatcher.NewDispatcher("", "", "", "", logger.Desugar())
+	kinesisDispatcher, err := dispatcher.NewDispatcher("", "", "", logger.Desugar())
 	if err != nil {
 		logger.Fatalw("Unable to create kinesis dispatcher", zap.Error(err))
 	}
