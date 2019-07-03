@@ -1,5 +1,6 @@
-# Custom Controller for Kinesis Sources
+# AWS Kinesis Knative Custom Controller
 
+Cluster channel provisioner provides Knative channels with [AWS Kinesis](https://aws.amazon.com/kinesis/) as message queue backend.
 
 ## Generating Code for Custom Controller 
 In case of any changes to types for the custom controller, use the following commands to regenerate client and deepcopy files
