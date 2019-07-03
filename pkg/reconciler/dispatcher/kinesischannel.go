@@ -1,11 +1,11 @@
 /*
-Copyright 2019 The Knative Authors
+Copyright (c) 2018 TriggerMesh, Inc
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+   http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,17 +23,17 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/triggermesh/aws-kinesis-provisioner/pkg/apis/messaging/v1alpha1"
-	messaginginformers "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/informers/externalversions/messaging/v1alpha1"
-	listers "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/listers/messaging/v1alpha1"
-	"github.com/triggermesh/aws-kinesis-provisioner/pkg/dispatcher"
-	"github.com/triggermesh/aws-kinesis-provisioner/pkg/reconciler"
 	eventingduck "github.com/knative/eventing/pkg/apis/duck/v1alpha1"
 	eventingv1alpha1 "github.com/knative/eventing/pkg/apis/eventing/v1alpha1"
 	"github.com/knative/eventing/pkg/logging"
 	"github.com/knative/eventing/pkg/provisioners/fanout"
 	"github.com/knative/eventing/pkg/provisioners/multichannelfanout"
 	"github.com/knative/pkg/controller"
+	"github.com/triggermesh/aws-kinesis-provisioner/pkg/apis/messaging/v1alpha1"
+	messaginginformers "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/informers/externalversions/messaging/v1alpha1"
+	listers "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/listers/messaging/v1alpha1"
+	"github.com/triggermesh/aws-kinesis-provisioner/pkg/dispatcher"
+	"github.com/triggermesh/aws-kinesis-provisioner/pkg/reconciler"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -63,7 +63,7 @@ type Reconciler struct {
 
 	kinesischannelLister   listers.KinesisChannelLister
 	kinesischannelInformer cache.SharedIndexInformer
-	impl                 *controller.Impl
+	impl                   *controller.Impl
 }
 
 // Check that our Reconciler implements controller.Reconciler.
@@ -78,7 +78,7 @@ func NewController(
 ) *controller.Impl {
 
 	r := &Reconciler{
-		Base:                 reconciler.NewBase(opt, controllerAgentName),
+		Base:                   reconciler.NewBase(opt, controllerAgentName),
 		kinesisDispatcher:      kinesisDispatcher,
 		kinesischannelLister:   kinesischannelInformer.Lister(),
 		kinesischannelInformer: kinesischannelInformer.Informer(),
