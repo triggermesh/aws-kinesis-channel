@@ -15,11 +15,11 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: kinesissources.triggermesh.dev
+  name: kinesischannels.messaging.triggermesh.dev
 spec:
-  group: triggermesh.dev
-  version: v1
+  group: messaging.triggermesh.dev
+  version: v1alpha1
   names:
-    kind: KinesisSource
-    plural: kinesissources
+    kind: KinesisChannel
+    plural: kinesischannels
   scope: Namespaced

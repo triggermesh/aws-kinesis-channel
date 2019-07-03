@@ -19,7 +19,7 @@ limitations under the License.
 package versioned
 
 import (
-	kinesissourcev1 "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned/typed/kinesissource/v1"
+	messagingv1alpha1 "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned/typed/messaging/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -27,27 +27,19 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	KinesissourceV1() kinesissourcev1.KinesissourceV1Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Kinesissource() kinesissourcev1.KinesissourceV1Interface
+	MessagingV1alpha1() messagingv1alpha1.MessagingV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	kinesissourceV1 *kinesissourcev1.KinesissourceV1Client
+	messagingV1alpha1 *messagingv1alpha1.MessagingV1alpha1Client
 }
 
-// KinesissourceV1 retrieves the KinesissourceV1Client
-func (c *Clientset) KinesissourceV1() kinesissourcev1.KinesissourceV1Interface {
-	return c.kinesissourceV1
-}
-
-// Deprecated: Kinesissource retrieves the default version of KinesissourceClient.
-// Please explicitly pick a version.
-func (c *Clientset) Kinesissource() kinesissourcev1.KinesissourceV1Interface {
-	return c.kinesissourceV1
+// MessagingV1alpha1 retrieves the MessagingV1alpha1Client
+func (c *Clientset) MessagingV1alpha1() messagingv1alpha1.MessagingV1alpha1Interface {
+	return c.messagingV1alpha1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -66,7 +58,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
-	cs.kinesissourceV1, err = kinesissourcev1.NewForConfig(&configShallowCopy)
+	cs.messagingV1alpha1, err = messagingv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +74,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
-	cs.kinesissourceV1 = kinesissourcev1.NewForConfigOrDie(c)
+	cs.messagingV1alpha1 = messagingv1alpha1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -91,7 +83,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.kinesissourceV1 = kinesissourcev1.New(c)
+	cs.messagingV1alpha1 = messagingv1alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

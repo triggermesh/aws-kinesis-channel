@@ -21,7 +21,7 @@ package externalversions
 import (
 	"fmt"
 
-	v1 "github.com/triggermesh/aws-kinesis-provisioner/pkg/apis/kinesissource/v1"
+	v1alpha1 "github.com/triggermesh/aws-kinesis-provisioner/pkg/apis/messaging/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -52,9 +52,9 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=kinesissource.triggermesh.dev, Version=v1
-	case v1.SchemeGroupVersion.WithResource("kinesissources"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Kinesissource().V1().KinesisSources().Informer()}, nil
+	// Group=messaging.triggermesh.dev, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("kinesischannels"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Messaging().V1alpha1().KinesisChannels().Informer()}, nil
 
 	}
 

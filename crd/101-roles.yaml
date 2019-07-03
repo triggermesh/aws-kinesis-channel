@@ -23,8 +23,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: kinesis-controller-role
 rules:
-  - apiGroups: ["triggermesh.dev", "sources.eventing.knative.dev"]
-    resources: ["kinesissources", "containersources"]
+  - apiGroups: ["messaging.triggermesh.dev", "sources.eventing.knative.dev"]
+    resources: ["kinesischannels", "containersources"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -38,4 +38,34 @@ subjects:
 roleRef:
   kind: ClusterRole
   name: kinesis-controller-role
+  apiGroup: rbac.authorization.k8s.io
+
+
+--- 
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kinesis-dispatcher
+  namespace: knative-eventing
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: kinesis-dispatcher-role
+rules:
+  - apiGroups: ["messaging.triggermesh.dev", "sources.eventing.knative.dev"]
+    resources: ["kinesischannels", "containersources"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kinesis-dispatcher-rolebinding
+subjects:
+  - kind: ServiceAccount
+    name: kinesis-dispatcher
+    namespace: knative-eventing
+roleRef:
+  kind: ClusterRole
+  name: kinesis-dispatcher-role
   apiGroup: rbac.authorization.k8s.io
