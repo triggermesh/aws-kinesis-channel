@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 
 	"github.com/knative/eventing/pkg/logconfig"
 	"github.com/knative/pkg/configmap"
@@ -54,7 +55,7 @@ func main() {
 		logger.Fatalw("Error building kubeconfig", zap.Error(err))
 	}
 
-	kinesisDispatcher, err := dispatcher.NewDispatcher("", "", "", logger.Desugar())
+	kinesisDispatcher, err := dispatcher.NewDispatcher(getRequiredEnv("AWS_ACCESS_KEY_ID"), getRequiredEnv("AWS_SECRET_ACCESS_KEY"), getRequiredEnv("AWS_REGION"), logger.Desugar())
 	if err != nil {
 		logger.Fatalw("Unable to create kinesis dispatcher", zap.Error(err))
 	}
@@ -142,4 +143,12 @@ func getLoggingConfigOrDie() map[string]string {
 		}
 		return cm
 	}
+}
+
+func getRequiredEnv(envKey string) string {
+	val, defined := os.LookupEnv(envKey)
+	if !defined {
+		log.Fatalf("required environment variable not defined '%s'", envKey)
+	}
+	return val
 }
