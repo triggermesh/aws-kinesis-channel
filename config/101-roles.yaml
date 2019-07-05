@@ -23,9 +23,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: kinesis-controller-role
 rules:
-  - apiGroups: ["messaging.triggermesh.dev", "sources.eventing.knative.dev"]
-    resources: ["kinesischannels", "containersources"]
-    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["", "apps", "messaging.triggermesh.dev", "sources.eventing.knative.dev"]
+    resources: ["events", "endpoints", "services", "deployments", "secrets", "kinesischannels", "kinesischannels/status", "containersources"]
+    verbs: ["get", "list", "create", "put", "update", "delete", "patch", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -53,9 +53,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: kinesis-dispatcher-role
 rules:
-  - apiGroups: ["messaging.triggermesh.dev", "sources.eventing.knative.dev"]
-    resources: ["kinesischannels", "containersources"]
-    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["", "apps", "messaging.triggermesh.dev", "sources.eventing.knative.dev"]
+    resources: ["events", "endpoints", "services", "deployments", "secrets", "kinesischannels", "kinesischannels/status", "containersources"]
+    verbs: ["get", "list", "create", "put", "update", "delete", "patch", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

@@ -55,10 +55,10 @@ type SubscriptionsSupervisor struct {
 	subscriptionsMux sync.Mutex
 	subscriptions    map[provisioners.ChannelReference]map[subscriptionReference]*kinesis.StreamDescription
 
-	connect                chan struct{}
-	accountAccessKeyID     string
-	accountSecretAccessKey string
-	region                 string
+	connect chan struct{}
+	// accountAccessKeyID     string
+	// accountSecretAccessKey string
+	// region                 string
 	// kinesisConnMux is used to protect kinesisConn and kinesisConnInProgress during
 	// the transition from not connected to connected states.
 	kinesisConnMux        sync.Mutex
@@ -69,15 +69,12 @@ type SubscriptionsSupervisor struct {
 }
 
 // NewDispatcher returns a new SubscriptionsSupervisor.
-func NewDispatcher(accountAccessKeyID, accountSecretAccessKey, region string, logger *zap.Logger) (*SubscriptionsSupervisor, error) {
+func NewDispatcher(logger *zap.Logger) (*SubscriptionsSupervisor, error) {
 	d := &SubscriptionsSupervisor{
-		logger:                 logger,
-		dispatcher:             provisioners.NewMessageDispatcher(logger.Sugar()),
-		connect:                make(chan struct{}, maxElements),
-		accountAccessKeyID:     accountAccessKeyID,
-		accountSecretAccessKey: accountSecretAccessKey,
-		region:                 region,
-		subscriptions:          make(map[provisioners.ChannelReference]map[subscriptionReference]*kinesis.StreamDescription),
+		logger:        logger,
+		dispatcher:    provisioners.NewMessageDispatcher(logger.Sugar()),
+		connect:       make(chan struct{}, maxElements),
+		subscriptions: make(map[provisioners.ChannelReference]map[subscriptionReference]*kinesis.StreamDescription),
 	}
 	d.setHostToChannelMap(map[string]provisioners.ChannelReference{})
 	receiver, err := provisioners.NewMessageReceiver(
@@ -137,24 +134,24 @@ func (s *SubscriptionsSupervisor) connectWithRetry(stopCh <-chan struct{}) {
 	// re-attempting evey 1 second until the connection is established.
 	ticker := time.NewTicker(retryInterval)
 	defer ticker.Stop()
-	for {
-		kConn, err := kinesisutil.Connect(s.accountAccessKeyID, s.accountSecretAccessKey, s.region, s.logger.Sugar())
-		if err == nil {
-			// Locking here in order to reduce time in locked state.
-			s.kinesisConnMux.Lock()
-			s.kinesisConn = kConn
-			s.kinesisConnInProgress = false
-			s.kinesisConnMux.Unlock()
-			return
-		}
-		s.logger.Sugar().Errorf("Connect() failed with error: %+v, retrying in %s", err, retryInterval.String())
-		select {
-		case <-ticker.C:
-			continue
-		case <-stopCh:
-			return
-		}
-	}
+	// for {
+	// 	kConn, err := kinesisutil.Connect(s.accountAccessKeyID, s.accountSecretAccessKey, s.region, s.logger.Sugar())
+	// 	if err == nil {
+	// 		// Locking here in order to reduce time in locked state.
+	// 		s.kinesisConnMux.Lock()
+	// 		s.kinesisConn = kConn
+	// 		s.kinesisConnInProgress = false
+	// 		s.kinesisConnMux.Unlock()
+	// 		return
+	// 	}
+	// 	s.logger.Sugar().Errorf("Connect() failed with error: %+v, retrying in %s", err, retryInterval.String())
+	// 	select {
+	// 	case <-ticker.C:
+	// 		continue
+	// 	case <-stopCh:
+	// 		return
+	// 	}
+	// }
 }
 
 // Connect is called for initial connection as well as after every disconnect

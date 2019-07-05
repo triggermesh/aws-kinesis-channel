@@ -39,7 +39,6 @@ type KinesisChannel struct {
 // KinesisChannelSpec is the spec for a KinesisChannel resource
 type KinesisChannelSpec struct {
 	Subscribable  *eventingduck.Subscribable `json:"subscribable,omitempty"`
-	Name          string                     `json:"name"`
 	StreamName    string                     `json:"stream_name"`
 	AccountRegion string                     `json:"account_region"`
 	AccountCreds  string                     `json:"account_creds"`
@@ -61,6 +60,8 @@ type KinesisChannelStatus struct {
 
 	// Subscribers is populated with the statuses of each of the Channelable's subscribers.
 	eventingduck.SubscribableTypeStatus `json:",inline"`
+
+	StreamReady bool `json:",omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

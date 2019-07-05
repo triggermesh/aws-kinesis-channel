@@ -22,14 +22,16 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/knative/eventing/pkg/reconciler/names"
-	"github.com/knative/pkg/apis"
+	"github.com/aws/aws-sdk-go/service/kinesis"
 
 	"github.com/knative/eventing/pkg/logging"
+	"github.com/knative/eventing/pkg/reconciler/names"
+	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/controller"
 	"github.com/triggermesh/aws-kinesis-provisioner/pkg/apis/messaging/v1alpha1"
 	messaginginformers "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/informers/externalversions/messaging/v1alpha1"
 	listers "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/listers/messaging/v1alpha1"
+	"github.com/triggermesh/aws-kinesis-provisioner/pkg/kinesisutil"
 	"github.com/triggermesh/aws-kinesis-provisioner/pkg/reconciler"
 	"github.com/triggermesh/aws-kinesis-provisioner/pkg/reconciler/controller/resources"
 	"go.uber.org/zap"
@@ -201,6 +203,19 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 
 	// See if the channel has been deleted.
 	if kc.DeletionTimestamp != nil {
+		if kc.Status.StreamReady {
+			creds, err := r.KubeClientSet.CoreV1().Secrets(kc.Namespace).Get(kc.Spec.AccountCreds, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			kclient, err := r.kinesisClient(kc.Spec.StreamName, kc.Spec.AccountRegion, creds)
+			if err != nil {
+				return err
+			}
+			if err := r.removeKinesisStream(kc.Spec.StreamName, kclient); err != nil {
+				return err
+			}
+		}
 		// K8s garbage collection will delete the K8s service for this channel.
 		return nil
 	}
@@ -271,8 +286,20 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 		Host:   names.ServiceHostName(svc.Name, svc.Namespace),
 	})
 
-	// Ok, so now the Dispatcher Deployment & Service have been created, we're golden since the
-	// dispatcher watches the Channel and where it needs to dispatch events to.
+	if !kc.Status.StreamReady {
+		creds, err := r.KubeClientSet.CoreV1().Secrets(kc.Namespace).Get(kc.Spec.AccountCreds, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		kclient, err := r.kinesisClient(kc.Spec.StreamName, kc.Spec.AccountRegion, creds)
+		if err != nil {
+			return err
+		}
+		if err := r.setupKinesisStream(kc.Spec.StreamName, kclient); err != nil {
+			return err
+		}
+	}
+	kc.Status.StreamReady = true
 	return nil
 }
 
@@ -333,4 +360,33 @@ func (r *Reconciler) updateStatus(ctx context.Context, desired *v1alpha1.Kinesis
 		}
 	}
 	return new, err
+}
+
+func (r *Reconciler) kinesisClient(stream, region string, creds *corev1.Secret) (*kinesis.Kinesis, error) {
+	if creds == nil {
+		return nil, fmt.Errorf("Credentials data is nil")
+	}
+	keyID, present := creds.Data["aws_access_key_id"]
+	if !present {
+		return nil, fmt.Errorf("\"aws_access_key_id\" secret key is missing")
+	}
+	secret, present := creds.Data["aws_secret_access_key"]
+	if !present {
+		return nil, fmt.Errorf("\"aws_secret_access_key\" secret key is missing")
+	}
+	return kinesisutil.Connect(string(keyID), string(secret), region, r.Logger)
+}
+
+func (r *Reconciler) setupKinesisStream(stream string, kinesisClient *kinesis.Kinesis) error {
+	if _, err := kinesisutil.Describe(kinesisClient, &stream); err == nil {
+		return nil
+	}
+	return kinesisutil.Create(kinesisClient, &stream)
+}
+
+func (r *Reconciler) removeKinesisStream(stream string, kinesisClient *kinesis.Kinesis) error {
+	if _, err := kinesisutil.Describe(kinesisClient, &stream); err != nil {
+		return nil
+	}
+	return kinesisutil.Delete(kinesisClient, &stream)
 }

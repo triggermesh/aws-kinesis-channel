@@ -12,45 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kinesis-dispatcher
+  name: kinesis-ch-dispatcher
   namespace: knative-eventing
 spec:
   replicas: 1
   selector:
-    matchLabels:
-      customDispatcher: kinesis
-      role: dispatcher
+    matchLabels: &labels
+      messaging.triggermesh.dev/channel: kinesis-channel
+      messaging.triggermesh.dev/role: dispatcher
   template:
     metadata:
-      annotations:
-        sidecar.istio.io/inject: "false"
-      labels:
-        customDispatcher: kinesis
-        role: dispatcher
+      labels: *labels
     spec:
       containers:
-      - image: github.com/triggermesh/aws-kinesis-provisioner
+      - image: github.com/triggermesh/aws-kinesis-provisioner/cmd/channel_dispatcher
         name: dispatcher
         env:
+        - name: CONFIG_LOGGING_NAME
+          value: config-logging
         - name: SYSTEM_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: AWS_ACCESS_KEY_ID
-          valueFrom:
-            secretKeyRef:
-              name: awscreds
-              key: aws_access_key_id
-        - name: AWS_SECRET_ACCESS_KEY
-          valueFrom:
-            secretKeyRef:
-              name: awscreds
-              key: aws_secret_access_key
-        - name: AWS_REGION
-          value: us-east-1
+        # - name: AWS_ACCESS_KEY_ID
+          # valueFrom:
+            # secretKeyRef:
+              # name: awscreds
+              # key: aws_access_key_id
+        # - name: AWS_SECRET_ACCESS_KEY
+          # valueFrom:
+            # secretKeyRef:
+              # name: awscreds
+              # key: aws_secret_access_key
+        # - name: AWS_REGION
+          # value: us-east-1
         resources:
           limits:
             cpu: "1"
@@ -58,6 +56,13 @@ spec:
           requests:
             cpu: 100m
             memory: 100Mi
+        volumeMounts:
+          - name: config-logging
+            mountPath: /etc/config-logging
+      volumes:
+        - name: config-logging
+          configMap:
+            name: config-logging
       serviceAccount: kinesis-dispatcher
       serviceAccountName: kinesis-dispatcher
       # terminationGracePeriodSeconds: 30

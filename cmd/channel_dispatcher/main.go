@@ -55,7 +55,7 @@ func main() {
 		logger.Fatalw("Error building kubeconfig", zap.Error(err))
 	}
 
-	kinesisDispatcher, err := dispatcher.NewDispatcher(getRequiredEnv("AWS_ACCESS_KEY_ID"), getRequiredEnv("AWS_SECRET_ACCESS_KEY"), getRequiredEnv("AWS_REGION"), logger.Desugar())
+	kinesisDispatcher, err := dispatcher.NewDispatcher(logger.Desugar())
 	if err != nil {
 		logger.Fatalw("Unable to create kinesis dispatcher", zap.Error(err))
 	}

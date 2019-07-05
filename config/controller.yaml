@@ -12,29 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kinesis-controller
+  name: kinesis-ch-controller
   namespace: knative-eventing
 spec:
   replicas: 1
   selector:
-    matchLabels:
-      customController: kinesis
-      role: controller
+    matchLabels: &labels
+      messaging.triggermesh.dev/channel: kinesis-channel
+      messaging.triggermesh.dev/role: controller
   template:
     metadata:
-      annotations:
-        sidecar.istio.io/inject: "false"
-      labels:
-        customController: kinesis
-        role: controller
+      labels: *labels
     spec:
       containers:
-      - image: github.com/triggermesh/aws-kinesis-provisioner
+      - image: github.com/triggermesh/aws-kinesis-provisioner/cmd/channel_controller
         name: controller
         env:
+        - name: CONFIG_LOGGING_NAME
+          value: config-logging
         - name: SYSTEM_NAMESPACE
           valueFrom:
             fieldRef:
@@ -46,6 +44,13 @@ spec:
           requests:
             cpu: 100m
             memory: 100Mi
+        volumeMounts:
+          - name: config-logging
+            mountPath: /etc/config-logging
+      volumes:
+        - name: config-logging
+          configMap:
+            name: config-logging
       serviceAccount: kinesis-controller
       serviceAccountName: kinesis-controller
       # terminationGracePeriodSeconds: 30

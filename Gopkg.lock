@@ -285,14 +285,13 @@
   version = "v1.1.6"
 
 [[projects]]
-  digest = "1:d698155c38e3bd38ff3a728e97cea698d3e4e8135950910b9affd5759589eb49"
+  digest = "1:59c0f676e64f60b90346c260aac1b4d34fc0ed9b1533b307bf4d2ff723421abe"
   name = "github.com/knative/eventing"
   packages = [
     "pkg/apis/duck/v1alpha1",
     "pkg/apis/eventing",
     "pkg/apis/eventing/v1alpha1",
     "pkg/channelwatcher",
-    "pkg/configmap",
     "pkg/logconfig",
     "pkg/logging",
     "pkg/provisioners",
@@ -300,12 +299,11 @@
     "pkg/provisioners/multichannelfanout",
     "pkg/provisioners/swappable",
     "pkg/reconciler/names",
-    "pkg/tracing",
     "pkg/utils",
   ]
   pruneopts = "NUT"
-  revision = "ab2600952f58339a0c8f673a712c4acdd5912757"
-  version = "v0.7.0"
+  revision = "7df0cc56c28d58223ff25d5ddfb487fa8c29a004"
+  version = "v0.7.1"
 
 [[projects]]
   digest = "1:7216df93043ea96fbfea0d131e9670c5751726f7179102f1ae2805311c31ad41"
@@ -374,13 +372,10 @@
   version = "1.0.1"
 
 [[projects]]
-  digest = "1:8a081d96c4071c8bddcecf81bfdf84e0acfebd04d2eedc128f49e23b48308026"
+  digest = "1:1904e7dd4a67274b95147e9a663432d1c523ea98f8c948bb3a67d4ce1dd346b6"
   name = "github.com/openzipkin/zipkin-go"
   packages = [
-    ".",
-    "idgenerator",
     "model",
-    "propagation",
     "reporter",
     "reporter/http",
   ]
@@ -1085,7 +1080,6 @@
     "github.com/knative/eventing/pkg/provisioners/fanout",
     "github.com/knative/eventing/pkg/provisioners/multichannelfanout",
     "github.com/knative/eventing/pkg/reconciler/names",
-    "github.com/knative/eventing/pkg/tracing",
     "github.com/knative/eventing/pkg/utils",
     "github.com/knative/pkg/apis",
     "github.com/knative/pkg/apis/duck/v1alpha1",
