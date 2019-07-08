@@ -203,7 +203,7 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 
 	// See if the channel has been deleted.
 	if kc.DeletionTimestamp != nil {
-		if kc.Status.StreamReady {
+		if kc.Status.GetCondition(v1alpha1.KinesisChannelConditionStreamReady).IsTrue() {
 			creds, err := r.KubeClientSet.CoreV1().Secrets(kc.Namespace).Get(kc.Spec.AccountCreds, metav1.GetOptions{})
 			if err != nil {
 				return err
@@ -286,7 +286,8 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 		Host:   names.ServiceHostName(svc.Name, svc.Namespace),
 	})
 
-	if !kc.Status.StreamReady {
+	if kc.Status.GetCondition(v1alpha1.KinesisChannelConditionStreamReady).IsUnknown() ||
+		kc.Status.GetCondition(v1alpha1.KinesisChannelConditionStreamReady).IsFalse() {
 		creds, err := r.KubeClientSet.CoreV1().Secrets(kc.Namespace).Get(kc.Spec.AccountCreds, metav1.GetOptions{})
 		if err != nil {
 			return err
@@ -299,7 +300,7 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 			return err
 		}
 	}
-	kc.Status.StreamReady = true
+	kc.Status.MarkStreamTrue()
 	return nil
 }
 

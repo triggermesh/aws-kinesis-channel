@@ -42,9 +42,9 @@ func Connect(accountAccessKeyID, accountSecretAccessKey, region string, logger *
 	return kinesis, nil
 }
 
-func Describe(client *kinesis.Kinesis, streamName *string) (*kinesis.StreamDescription, error) {
+func Describe(client *kinesis.Kinesis, streamName string) (*kinesis.StreamDescription, error) {
 	res, err := client.DescribeStream(&kinesis.DescribeStreamInput{
-		StreamName: streamName,
+		StreamName: &streamName,
 	})
 	if err != nil {
 		return nil, err
@@ -52,10 +52,10 @@ func Describe(client *kinesis.Kinesis, streamName *string) (*kinesis.StreamDescr
 	return res.StreamDescription, nil
 }
 
-func Create(client *kinesis.Kinesis, streamName *string) error {
+func Create(client *kinesis.Kinesis, streamName string) error {
 	_, err := client.CreateStream(&kinesis.CreateStreamInput{
 		ShardCount: aws.Int64(1), // by now creating streams with only one shard.
-		StreamName: streamName,
+		StreamName: &streamName,
 	})
 	if err != nil {
 		return err
@@ -63,10 +63,10 @@ func Create(client *kinesis.Kinesis, streamName *string) error {
 	return nil
 }
 
-func Delete(client *kinesis.Kinesis, streamName *string) error {
+func Delete(client *kinesis.Kinesis, streamName string) error {
 	_, err := client.DeleteStream(&kinesis.DeleteStreamInput{
 		EnforceConsumerDeletion: aws.Bool(true), // by now creating streams with only one shard.
-		StreamName:              streamName,
+		StreamName:              &streamName,
 	})
 	if err != nil {
 		return err
@@ -75,20 +75,20 @@ func Delete(client *kinesis.Kinesis, streamName *string) error {
 }
 
 // Publish publishes msg to Kinesis stream
-func Publish(client *kinesis.Kinesis, streamName *string, msg []byte, logger *zap.SugaredLogger) error {
+func Publish(client *kinesis.Kinesis, streamName string, msg []byte, logger *zap.SugaredLogger) error {
 	_, err := client.PutRecord(&kinesis.PutRecordInput{
 		Data:         msg,
-		PartitionKey: streamName,
-		StreamName:   streamName,
+		PartitionKey: &streamName,
+		StreamName:   &streamName,
 	})
 	return err
 }
 
-func GetRecord(client *kinesis.Kinesis, shardIterator *string) (provisioners.Message, *string, error) {
+func GetRecord(client *kinesis.Kinesis, shardIterator string) (provisioners.Message, *string, error) {
 	var message provisioners.Message
 	res, err := client.GetRecords(&kinesis.GetRecordsInput{
 		Limit:         aws.Int64(1),
-		ShardIterator: shardIterator,
+		ShardIterator: &shardIterator,
 	})
 	if err != nil {
 		return message, nil, err

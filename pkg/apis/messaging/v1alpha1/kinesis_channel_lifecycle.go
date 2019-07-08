@@ -27,6 +27,7 @@ var kc = apis.NewLivingConditionSet(
 	KinesisChannelConditionDispatcherReady,
 	KinesisChannelConditionServiceReady,
 	KinesisChannelConditionEndpointsReady,
+	KinesisChannelConditionStreamReady,
 	KinesisChannelConditionAddressable,
 	KinesisChannelConditionChannelServiceReady)
 
@@ -47,6 +48,8 @@ const (
 	// KinesisChannelConditionEndpointsReady has status True when a k8s Service Endpoints are backed
 	// by at least one endpoint.
 	KinesisChannelConditionEndpointsReady apis.ConditionType = "EndpointsReady"
+
+	KinesisChannelConditionStreamReady apis.ConditionType = "StreamReady"
 
 	// KinesisChannelConditionAddressable has status true when this KinesisChannel meets
 	// the Addressable contract and has a non-empty hostname.
@@ -127,4 +130,12 @@ func (cs *KinesisChannelStatus) MarkEndpointsFailed(reason, messageFormat string
 
 func (cs *KinesisChannelStatus) MarkEndpointsTrue() {
 	kc.Manage(cs).MarkTrue(KinesisChannelConditionEndpointsReady)
+}
+
+func (cs *KinesisChannelStatus) MarkStreamFailed(reason, messageFormat string, messageA ...interface{}) {
+	kc.Manage(cs).MarkFalse(KinesisChannelConditionStreamReady, reason, messageFormat, messageA...)
+}
+
+func (cs *KinesisChannelStatus) MarkStreamTrue() {
+	kc.Manage(cs).MarkTrue(KinesisChannelConditionStreamReady)
 }
