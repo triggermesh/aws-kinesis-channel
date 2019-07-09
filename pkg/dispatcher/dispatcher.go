@@ -24,6 +24,7 @@ import (
 	"sync/atomic"
 
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	eventingduck "github.com/knative/eventing/pkg/apis/duck/v1alpha1"
 	eventingv1alpha1 "github.com/knative/eventing/pkg/apis/eventing/v1alpha1"
 	"github.com/knative/eventing/pkg/logging"
 	"github.com/knative/eventing/pkg/provisioners"
@@ -43,10 +44,10 @@ type SubscriptionsSupervisor struct {
 
 	mux sync.Mutex
 
-	foo map[string]stream
+	kinesisSessions map[provisioners.ChannelReference]stream
 
 	// subscriptionsMux sync.Mutex
-	// subscriptions    map[provisioners.ChannelReference]map[subscriptionReference]*kinesis.StreamDescription
+	subscriptions map[provisioners.ChannelReference]map[subscriptionReference]bool
 
 	// connect chan struct{}
 	// accountAccessKeyID     string
@@ -69,10 +70,10 @@ type stream struct {
 // NewDispatcher returns a new SubscriptionsSupervisor.
 func NewDispatcher(logger *zap.Logger) (*SubscriptionsSupervisor, error) {
 	d := &SubscriptionsSupervisor{
-		logger:     logger,
-		dispatcher: provisioners.NewMessageDispatcher(logger.Sugar()),
-		foo:        make(map[string]stream),
-		// subscriptions: make(map[provisioners.ChannelReference]map[subscriptionReference]*kinesis.StreamDescription),
+		logger:          logger,
+		dispatcher:      provisioners.NewMessageDispatcher(logger.Sugar()),
+		kinesisSessions: make(map[provisioners.ChannelReference]stream),
+		subscriptions:   make(map[provisioners.ChannelReference]map[subscriptionReference]bool),
 	}
 	d.setHostToChannelMap(map[string]provisioners.ChannelReference{})
 	receiver, err := provisioners.NewMessageReceiver(
@@ -104,7 +105,8 @@ func createReceiverFunction(s *SubscriptionsSupervisor, logger *zap.SugaredLogge
 			logger.Errorf("Error during marshaling of the message: %v", err)
 			return err
 		}
-		kk, present := s.foo[channel.String()]
+		cRef := provisioners.ChannelReference{Namespace: channel.Namespace, Name: channel.Name}
+		kk, present := s.kinesisSessions[cRef]
 		if !present {
 			logger.Errorf("Kinesis session not initialized")
 			return err
@@ -171,70 +173,70 @@ func (s *SubscriptionsSupervisor) Start(stopCh <-chan struct{}) error {
 // 	}
 // }
 
-// // UpdateSubscriptions creates/deletes the kinesis subscriptions based on channel.Spec.Subscribable.Subscribers
-// // Return type:map[eventingduck.SubscriberSpec]error --> Returns a map of subscriberSpec that failed with the value=error encountered.
-// // Ignore the value in case error != nil
-// func (s *SubscriptionsSupervisor) UpdateSubscriptions(channel *eventingv1alpha1.Channel, isFinalizer bool) (map[eventingduck.SubscriberSpec]error, error) {
-// 	s.subscriptionsMux.Lock()
-// 	defer s.subscriptionsMux.Unlock()
+// UpdateSubscriptions creates/deletes the kinesis subscriptions based on channel.Spec.Subscribable.Subscribers
+// Return type:map[eventingduck.SubscriberSpec]error --> Returns a map of subscriberSpec that failed with the value=error encountered.
+// Ignore the value in case error != nil
+func (s *SubscriptionsSupervisor) UpdateSubscriptions(channel *v1alpha1.KinesisChannel, isFinalizer bool) (map[eventingduck.SubscriberSpec]error, error) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
 
-// 	failedToSubscribe := make(map[eventingduck.SubscriberSpec]error)
-// 	cRef := provisioners.ChannelReference{Namespace: channel.Namespace, Name: channel.Name}
-// 	if channel.Spec.Subscribable == nil || isFinalizer {
-// 		s.logger.Sugar().Infof("Empty subscriptions for channel Ref: %v; unsubscribe all active subscriptions, if any", cRef)
-// 		chMap, ok := s.subscriptions[cRef]
-// 		if !ok {
-// 			// nothing to do
-// 			s.logger.Sugar().Infof("No channel Ref %v found in subscriptions map", cRef)
-// 			return failedToSubscribe, nil
-// 		}
-// 		for sub := range chMap {
-// 			s.unsubscribe(cRef, sub)
-// 		}
-// 		delete(s.subscriptions, cRef)
-// 		return failedToSubscribe, nil
-// 	}
+	failedToSubscribe := make(map[eventingduck.SubscriberSpec]error)
+	cRef := provisioners.ChannelReference{Namespace: channel.Namespace, Name: channel.Name}
+	if channel.Spec.Subscribable == nil || isFinalizer {
+		s.logger.Sugar().Infof("Empty subscriptions for channel Ref: %v; unsubscribe all active subscriptions, if any", cRef)
+		chMap, ok := s.subscriptions[cRef]
+		if !ok {
+			// nothing to do
+			s.logger.Sugar().Infof("No channel Ref %v found in subscriptions map", cRef)
+			return failedToSubscribe, nil
+		}
+		for sub := range chMap {
+			s.unsubscribe(cRef, sub)
+		}
+		delete(s.subscriptions, cRef)
+		return failedToSubscribe, nil
+	}
 
-// 	subscriptions := channel.Spec.Subscribable.Subscribers
-// 	activeSubs := make(map[subscriptionReference]bool) // it's logically a set
+	subscriptions := channel.Spec.Subscribable.Subscribers
+	activeSubs := make(map[subscriptionReference]bool) // it's logically a set
 
-// 	chMap, ok := s.subscriptions[cRef]
-// 	if !ok {
-// 		chMap = make(map[subscriptionReference]*kinesis.StreamDescription)
-// 		s.subscriptions[cRef] = chMap
-// 	}
-// 	var errStrings []string
-// 	for _, sub := range subscriptions {
-// 		// check if the subscription already exist and do nothing in this case
-// 		subRef := newSubscriptionReference(sub)
-// 		if _, ok := chMap[subRef]; ok {
-// 			activeSubs[subRef] = true
-// 			s.logger.Sugar().Infof("Subscription: %v already active for channel: %v", sub, cRef)
-// 			continue
-// 		}
-// 		// subscribe and update failedSubscription if subscribe fails
-// 		kinesisSub, err := s.subscribe(cRef, subRef)
-// 		if err != nil {
-// 			errStrings = append(errStrings, err.Error())
-// 			s.logger.Sugar().Errorf("failed to subscribe (subscription:%q) to channel: %v. Error:%s", sub, cRef, err.Error())
-// 			failedToSubscribe[sub] = err
-// 			continue
-// 		}
-// 		chMap[subRef] = kinesisSub
-// 		activeSubs[subRef] = true
-// 	}
-// 	// Unsubscribe for deleted subscriptions
-// 	for sub := range chMap {
-// 		if ok := activeSubs[sub]; !ok {
-// 			s.unsubscribe(cRef, sub)
-// 		}
-// 	}
-// 	// delete the channel from s.subscriptions if chMap is empty
-// 	if len(s.subscriptions[cRef]) == 0 {
-// 		delete(s.subscriptions, cRef)
-// 	}
-// 	return failedToSubscribe, nil
-// }
+	chMap, ok := s.subscriptions[cRef]
+	if !ok {
+		chMap = make(map[subscriptionReference]bool)
+		s.subscriptions[cRef] = chMap
+	}
+	var errStrings []string
+	for _, sub := range subscriptions {
+		// check if the subscription already exist and do nothing in this case
+		subRef := newSubscriptionReference(sub)
+		if _, ok := chMap[subRef]; ok {
+			activeSubs[subRef] = true
+			s.logger.Sugar().Infof("Subscription: %v already active for channel: %v", sub, cRef)
+			continue
+		}
+		// subscribe and update failedSubscription if subscribe fails
+		err := s.subscribe(cRef, subRef)
+		if err != nil {
+			errStrings = append(errStrings, err.Error())
+			s.logger.Sugar().Errorf("failed to subscribe (subscription:%q) to channel: %v. Error:%s", sub, cRef, err.Error())
+			failedToSubscribe[sub] = err
+			continue
+		}
+		chMap[subRef] = true
+		activeSubs[subRef] = true
+	}
+	// Unsubscribe for deleted subscriptions
+	for sub := range chMap {
+		if ok := activeSubs[sub]; !ok {
+			s.unsubscribe(cRef, sub)
+		}
+	}
+	// delete the channel from s.subscriptions if chMap is empty
+	if len(s.subscriptions[cRef]) == 0 {
+		delete(s.subscriptions, cRef)
+	}
+	return failedToSubscribe, nil
+}
 
 // func toSubscriberStatus(subSpec *v1alpha1.SubscriberSpec, condition corev1.ConditionStatus, msg string) *v1alpha1.SubscriberStatus {
 // 	if subSpec == nil {
@@ -248,57 +250,57 @@ func (s *SubscriptionsSupervisor) Start(stopCh <-chan struct{}) error {
 // 	}
 // }
 
-// func (s *SubscriptionsSupervisor) subscribe(channel provisioners.ChannelReference, subscription subscriptionReference) (*kinesis.StreamDescription, error) {
-// 	s.logger.Info("Subscribe to channel:", zap.Any("channel", channel), zap.Any("subscription", subscription))
+func (s *SubscriptionsSupervisor) subscribe(channel provisioners.ChannelReference, subscription subscriptionReference) error {
+	s.logger.Info("Subscribe to channel:", zap.Any("channel", channel), zap.Any("subscription", subscription))
 
-// 	// create kinesis stream
-// 	streamName := getSubject(channel)
-// 	s.kinesisConnMux.Lock()
-// 	currentkinesisConn := s.kinesisConn
-// 	s.kinesisConnMux.Unlock()
-// 	if currentkinesisConn == nil {
-// 		return nil, fmt.Errorf("No Connection to kinesis")
-// 	}
+	// create kinesis stream
+	// s.kinesisConnMux.Lock()
+	// currentkinesisConn := s.kinesisConn
+	// s.kinesisConnMux.Unlock()
+	// if currentkinesisConn == nil {
+	// return nil, fmt.Errorf("No Connection to kinesis")
+	// }
 
-// 	err := kinesisutil.Create(s.kinesisConn, &streamName)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	// err := kinesisutil.Create(s.kinesisConn, &streamName)
+	// if err != nil {
+	// return nil, err
+	// }
 
-// 	stream, err := kinesisutil.Describe(s.kinesisConn, &streamName)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	// stream, err := kinesisutil.Describe(s.kinesisConn, &streamName)
+	// if err != nil {
+	// return nil, err
+	// }
 
-// 	for {
-// 		if *stream.StreamStatus != "ACTIVE" {
-// 			time.Sleep(10 * time.Second)
-// 			stream, err = kinesisutil.Describe(s.kinesisConn, &streamName)
-// 			if err != nil {
-// 				return nil, err
-// 			}
-// 		} else {
-// 			break
-// 		}
-// 	}
+	// for {
+	// if *stream.StreamStatus != "ACTIVE" {
+	// time.Sleep(10 * time.Second)
+	// stream, err = kinesisutil.Describe(s.kinesisConn, &streamName)
+	// if err != nil {
+	// return nil, err
+	// }
+	// } else {
+	// break
+	// }
+	// }
 
-// 	return stream, nil
-// }
+	// return stream, nil
+	return nil
+}
 
 // should be called only while holding subscriptionsMux
-// func (s *SubscriptionsSupervisor) unsubscribe(channel provisioners.ChannelReference, subscription subscriptionReference) error {
-// s.logger.Info("Unsubscribe from channel:", zap.Any("channel", channel), zap.Any("subscription", subscription))
+func (s *SubscriptionsSupervisor) unsubscribe(channel provisioners.ChannelReference, subscription subscriptionReference) error {
+	s.logger.Info("Unsubscribe from channel:", zap.Any("channel", channel), zap.Any("subscription", subscription))
 
-// if subsc, ok := s.subscriptions[channel][subscription]; ok {
-// delete from kinesis
-// err := kinesisutil.Delete(s.kinesisConn, subsc.StreamName)
-// if err != nil {
-// return err
-// }
-// delete(s.subscriptions[channel], subscription)
-// }
-// return nil
-// }
+	if _, ok := s.subscriptions[channel][subscription]; ok {
+		// delete from kinesis
+		// err := kinesisutil.Delete(s.kinesisConn, subsc.StreamName)
+		// if err != nil {
+		// return err
+		// }
+		delete(s.subscriptions[channel], subscription)
+	}
+	return nil
+}
 
 func (s *SubscriptionsSupervisor) getHostToChannelMap() map[string]provisioners.ChannelReference {
 	return s.hostToChannelMap.Load().(map[string]provisioners.ChannelReference)
@@ -335,7 +337,7 @@ func (s *SubscriptionsSupervisor) KinesisSessionExist(ctx context.Context, chann
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	cRef := provisioners.ChannelReference{Namespace: channel.Namespace, Name: channel.Name}
-	_, present := s.foo[cRef.String()]
+	_, present := s.kinesisSessions[cRef]
 	return present
 }
 
@@ -343,14 +345,14 @@ func (s *SubscriptionsSupervisor) CreateKinesisSession(ctx context.Context, chan
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	cRef := provisioners.ChannelReference{Namespace: channel.Namespace, Name: channel.Name}
-	_, present := s.foo[cRef.String()]
+	_, present := s.kinesisSessions[cRef]
 	if !present {
 		client, err := s.kinesisClient(channel.Spec.StreamName, channel.Spec.AccountRegion, secret)
 		if err != nil {
 			logger.Errorf("Error creating Kinesis session: %v", err)
 			return err
 		}
-		s.foo[cRef.String()] = stream{
+		s.kinesisSessions[cRef] = stream{
 			Name:   channel.Spec.StreamName,
 			Client: client,
 		}

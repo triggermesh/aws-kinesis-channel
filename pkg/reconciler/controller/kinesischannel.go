@@ -379,15 +379,15 @@ func (r *Reconciler) kinesisClient(stream, region string, creds *corev1.Secret) 
 }
 
 func (r *Reconciler) setupKinesisStream(stream string, kinesisClient *kinesis.Kinesis) error {
-	if _, err := kinesisutil.Describe(kinesisClient, &stream); err == nil {
+	if _, err := kinesisutil.Describe(kinesisClient, stream); err == nil {
 		return nil
 	}
-	return kinesisutil.Create(kinesisClient, &stream)
+	return kinesisutil.Create(kinesisClient, stream)
 }
 
 func (r *Reconciler) removeKinesisStream(stream string, kinesisClient *kinesis.Kinesis) error {
-	if _, err := kinesisutil.Describe(kinesisClient, &stream); err != nil {
+	if _, err := kinesisutil.Describe(kinesisClient, stream); err != nil {
 		return nil
 	}
-	return kinesisutil.Delete(kinesisClient, &stream)
+	return kinesisutil.Delete(kinesisClient, stream)
 }

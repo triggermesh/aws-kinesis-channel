@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 
 	eventingduck "github.com/knative/eventing/pkg/apis/duck/v1alpha1"
 	eventingv1alpha1 "github.com/knative/eventing/pkg/apis/eventing/v1alpha1"
@@ -137,10 +138,10 @@ func (r *Reconciler) reconcile(ctx context.Context, kinesisChannel *v1alpha1.Kin
 
 	// See if the channel has been deleted.
 	if kinesisChannel.DeletionTimestamp != nil {
-		// if _, err := r.kinesisDispatcher.UpdateSubscriptions(c, true); err != nil {
-		// logging.FromContext(ctx).Error("Error updating subscriptions", zap.Any("channel", c), zap.Error(err))
-		// return err
-		// }
+		if _, err := r.kinesisDispatcher.UpdateSubscriptions(kinesisChannel, true); err != nil {
+			logging.FromContext(ctx).Error("Error updating subscriptions", zap.Any("channel", kinesisChannel), zap.Error(err))
+			return err
+		}
 		removeFinalizer(kinesisChannel)
 		_, err := r.KinesisClientSet.MessagingV1alpha1().KinesisChannels(kinesisChannel.Namespace).Update(kinesisChannel)
 		return err
@@ -163,22 +164,22 @@ func (r *Reconciler) reconcile(ctx context.Context, kinesisChannel *v1alpha1.Kin
 	}
 
 	// Try to subscribe.
-	// failedSubscriptions, err := r.kinesisDispatcher.UpdateSubscriptions(c, false)
-	// if err != nil {
-	// logging.FromContext(ctx).Error("Error updating subscriptions", zap.Any("channel", c), zap.Error(err))
-	// return err
-	// }
-	// kinesisChannel.Status.SubscribableStatus = r.createSubscribableStatus(kinesisChannel.Spec.Subscribable, failedSubscriptions)
-	// if len(failedSubscriptions) > 0 {
-	// var b strings.Builder
-	// for _, subError := range failedSubscriptions {
-	// b.WriteString("\n")
-	// b.WriteString(subError.Error())
-	// }
-	// errMsg := b.String()
-	// logging.FromContext(ctx).Error(errMsg)
-	// return fmt.Errorf(errMsg)
-	// }
+	failedSubscriptions, err := r.kinesisDispatcher.UpdateSubscriptions(kinesisChannel, false)
+	if err != nil {
+		logging.FromContext(ctx).Error("Error updating subscriptions", zap.Any("channel", kinesisChannel), zap.Error(err))
+		return err
+	}
+	kinesisChannel.Status.SubscribableStatus = r.createSubscribableStatus(kinesisChannel.Spec.Subscribable, failedSubscriptions)
+	if len(failedSubscriptions) > 0 {
+		var b strings.Builder
+		for _, subError := range failedSubscriptions {
+			b.WriteString("\n")
+			b.WriteString(subError.Error())
+		}
+		errMsg := b.String()
+		logging.FromContext(ctx).Error(errMsg)
+		return fmt.Errorf(errMsg)
+	}
 
 	kinesisChannels, err := r.kinesischannelLister.List(labels.Everything())
 	if err != nil {
@@ -197,9 +198,9 @@ func (r *Reconciler) reconcile(ctx context.Context, kinesisChannel *v1alpha1.Kin
 		logging.FromContext(ctx).Error("Error updating host to channel map", zap.Error(err))
 		return err
 	}
-
 	return nil
 }
+
 func (r *Reconciler) createSubscribableStatus(subscribable *eventingduck.Subscribable, failedSubscriptions map[eventingduck.SubscriberSpec]error) *eventingduck.SubscribableStatus {
 	if subscribable == nil {
 		return nil
