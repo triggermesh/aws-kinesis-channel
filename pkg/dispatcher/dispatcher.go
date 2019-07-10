@@ -18,6 +18,7 @@ package dispatcher
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -42,29 +43,23 @@ type SubscriptionsSupervisor struct {
 	receiver   *provisioners.MessageReceiver
 	dispatcher *provisioners.MessageDispatcher
 
-	mux sync.Mutex
-
+	mux             sync.Mutex
 	kinesisSessions map[provisioners.ChannelReference]stream
-
-	// subscriptionsMux sync.Mutex
-	subscriptions map[provisioners.ChannelReference]map[subscriptionReference]bool
-
-	// connect chan struct{}
-	// accountAccessKeyID     string
-	// accountSecretAccessKey string
-	// region string
-	// kinesisConnMux is used to protect kinesisConn and kinesisConnInProgress during
-	// the transition from not connected to connected states.
-	// kinesisConnMux        sync.Mutex
-	// kinesisConn           *kinesis.Kinesis
-	// kinesisConnInProgress bool
+	subscriptions   map[provisioners.ChannelReference]map[subscriptionReference]bool
 
 	hostToChannelMap atomic.Value
 }
 
 type stream struct {
-	Name   string
-	Client *kinesis.Kinesis
+	StreamName string
+	Client     *kinesis.Kinesis
+}
+
+type headers map[string]string
+
+type data struct {
+	Headers headers `json:"headers"`
+	Payload string  `json:"payload"`
 }
 
 // NewDispatcher returns a new SubscriptionsSupervisor.
@@ -111,7 +106,7 @@ func createReceiverFunction(s *SubscriptionsSupervisor, logger *zap.SugaredLogge
 			logger.Errorf("Kinesis session not initialized")
 			return err
 		}
-		if err := kinesisutil.Publish(kk.Client, kk.Name, message, logger); err != nil {
+		if err := kinesisutil.Publish(kk.Client, kk.StreamName, message, logger); err != nil {
 			logger.Errorf("Error during publish: %v", err)
 			return err
 		}
@@ -238,52 +233,58 @@ func (s *SubscriptionsSupervisor) UpdateSubscriptions(channel *v1alpha1.KinesisC
 	return failedToSubscribe, nil
 }
 
-// func toSubscriberStatus(subSpec *v1alpha1.SubscriberSpec, condition corev1.ConditionStatus, msg string) *v1alpha1.SubscriberStatus {
-// 	if subSpec == nil {
-// 		return nil
-// 	}
-// 	return &v1alpha1.SubscriberStatus{
-// 		UID:                subSpec.UID,
-// 		ObservedGeneration: subSpec.Generation,
-// 		Message:            msg,
-// 		Ready:              condition,
-// 	}
-// }
-
 func (s *SubscriptionsSupervisor) subscribe(channel provisioners.ChannelReference, subscription subscriptionReference) error {
 	s.logger.Info("Subscribe to channel:", zap.Any("channel", channel), zap.Any("subscription", subscription))
 
-	// create kinesis stream
-	// s.kinesisConnMux.Lock()
-	// currentkinesisConn := s.kinesisConn
-	// s.kinesisConnMux.Unlock()
-	// if currentkinesisConn == nil {
-	// return nil, fmt.Errorf("No Connection to kinesis")
-	// }
-
-	// err := kinesisutil.Create(s.kinesisConn, &streamName)
-	// if err != nil {
-	// return nil, err
-	// }
-
-	// stream, err := kinesisutil.Describe(s.kinesisConn, &streamName)
-	// if err != nil {
-	// return nil, err
-	// }
-
-	// for {
-	// if *stream.StreamStatus != "ACTIVE" {
-	// time.Sleep(10 * time.Second)
-	// stream, err = kinesisutil.Describe(s.kinesisConn, &streamName)
-	// if err != nil {
-	// return nil, err
-	// }
-	// } else {
-	// break
-	// }
-	// }
-
-	// return stream, nil
+	session, present := s.kinesisSessions[channel]
+	if !present {
+		s.logger.Error("Kinesis session not found:", zap.Any("channel", channel))
+		return fmt.Errorf("Kinesis session for channel %q not found", channel.String())
+	}
+	iterator, err := kinesisutil.GetShardIterator(session.Client, &session.StreamName)
+	if err != nil {
+		s.logger.Error("Kinesis shard iterator request error:", zap.Error(err))
+		return fmt.Errorf("Kinesis shard iterator request error: %s", err)
+	}
+	go func(nextRecord *string, channel provisioners.ChannelReference, subscription subscriptionReference) {
+		var message data
+		for {
+			if _, exist := s.subscriptions[channel][subscription]; !exist {
+				s.logger.Info("Subscription not found, exiting")
+				return
+			}
+			if nextRecord == nil {
+				s.logger.Info("Null shard iterator, stop subscriber process. Is the stream closed?")
+				return
+			}
+			record, err := kinesisutil.GetRecord(session.Client, nextRecord)
+			if err != nil {
+				s.logger.Error("Error reading Kinesis stream message:", zap.Error(err))
+				continue
+			}
+			nextRecord = record.NextShardIterator
+			if len(record.Records) == 0 {
+				continue
+			}
+			if err := json.Unmarshal(record.Records[0].Data, &message); err != nil {
+				s.logger.Error("Error decoding message:", zap.Error(err))
+				continue
+			}
+			payload, err := base64.StdEncoding.DecodeString(message.Payload)
+			if err != nil {
+				s.logger.Error("Error decoding payload:", zap.Error(err))
+				continue
+			}
+			if err := s.dispatcher.DispatchMessage(&provisioners.Message{
+				Headers: message.Headers,
+				Payload: payload,
+			}, subscription.SubscriberURI, subscription.ReplyURI, provisioners.DispatchDefaults{
+				Namespace: channel.Namespace,
+			}); err != nil {
+				s.logger.Error("Message dispatching error:", zap.Error(err))
+			}
+		}
+	}(iterator.ShardIterator, channel, subscription)
 	return nil
 }
 
@@ -292,11 +293,6 @@ func (s *SubscriptionsSupervisor) unsubscribe(channel provisioners.ChannelRefere
 	s.logger.Info("Unsubscribe from channel:", zap.Any("channel", channel), zap.Any("subscription", subscription))
 
 	if _, ok := s.subscriptions[channel][subscription]; ok {
-		// delete from kinesis
-		// err := kinesisutil.Delete(s.kinesisConn, subsc.StreamName)
-		// if err != nil {
-		// return err
-		// }
 		delete(s.subscriptions[channel], subscription)
 	}
 	return nil
@@ -353,8 +349,8 @@ func (s *SubscriptionsSupervisor) CreateKinesisSession(ctx context.Context, chan
 			return err
 		}
 		s.kinesisSessions[cRef] = stream{
-			Name:   channel.Spec.StreamName,
-			Client: client,
+			StreamName: channel.Spec.StreamName,
+			Client:     client,
 		}
 	}
 	return nil

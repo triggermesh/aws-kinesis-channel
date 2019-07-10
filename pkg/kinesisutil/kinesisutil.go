@@ -17,11 +17,12 @@ limitations under the License.
 package kinesisutil
 
 import (
+	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
-	"github.com/knative/eventing/pkg/provisioners"
 	"go.uber.org/zap"
 )
 
@@ -42,25 +43,12 @@ func Connect(accountAccessKeyID, accountSecretAccessKey, region string, logger *
 	return kinesis, nil
 }
 
-func Describe(client *kinesis.Kinesis, streamName string) (*kinesis.StreamDescription, error) {
-	res, err := client.DescribeStream(&kinesis.DescribeStreamInput{
-		StreamName: &streamName,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return res.StreamDescription, nil
-}
-
 func Create(client *kinesis.Kinesis, streamName string) error {
 	_, err := client.CreateStream(&kinesis.CreateStreamInput{
 		ShardCount: aws.Int64(1), // by now creating streams with only one shard.
 		StreamName: &streamName,
 	})
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func Delete(client *kinesis.Kinesis, streamName string) error {
@@ -68,10 +56,7 @@ func Delete(client *kinesis.Kinesis, streamName string) error {
 		EnforceConsumerDeletion: aws.Bool(true), // by now creating streams with only one shard.
 		StreamName:              &streamName,
 	})
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // Publish publishes msg to Kinesis stream
@@ -84,15 +69,29 @@ func Publish(client *kinesis.Kinesis, streamName string, msg []byte, logger *zap
 	return err
 }
 
-func GetRecord(client *kinesis.Kinesis, shardIterator string) (provisioners.Message, *string, error) {
-	var message provisioners.Message
-	res, err := client.GetRecords(&kinesis.GetRecordsInput{
+// GetRecord retrieves one stream record by specified shard iterator
+func GetRecord(client *kinesis.Kinesis, shardIterator *string) (*kinesis.GetRecordsOutput, error) {
+	return client.GetRecords(&kinesis.GetRecordsInput{
 		Limit:         aws.Int64(1),
-		ShardIterator: &shardIterator,
+		ShardIterator: shardIterator,
 	})
-	if err != nil {
-		return message, nil, err
+}
+
+// GetShardIterator returns "latest" shard iterator for specified stream
+func GetShardIterator(client *kinesis.Kinesis, streamName *string) (*kinesis.GetShardIteratorOutput, error) {
+	res, err := client.DescribeStream(&kinesis.DescribeStreamInput{
+		StreamName: streamName,
+	})
+	if err != nil || res.StreamDescription == nil {
+		return nil, fmt.Errorf("Kinesis stream description: %s", err)
 	}
-	message.Payload = res.Records[0].Data
-	return message, res.NextShardIterator, nil
+	if l := len(res.StreamDescription.Shards); l != 1 {
+		return nil, fmt.Errorf("Got %d shards, expected 1", l)
+	}
+	t := kinesis.ShardIteratorTypeLatest
+	return client.GetShardIterator(&kinesis.GetShardIteratorInput{
+		StreamName:        res.StreamDescription.StreamName,
+		ShardId:           res.StreamDescription.Shards[0].ShardId,
+		ShardIteratorType: &t,
+	})
 }
