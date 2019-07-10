@@ -356,6 +356,15 @@ func (s *SubscriptionsSupervisor) CreateKinesisSession(ctx context.Context, chan
 	return nil
 }
 
+func (s *SubscriptionsSupervisor) DeleteKinesisSession(ctx context.Context, channel *v1alpha1.KinesisChannel) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	cRef := provisioners.ChannelReference{Namespace: channel.Namespace, Name: channel.Name}
+	if _, present := s.kinesisSessions[cRef]; present {
+		delete(s.kinesisSessions, cRef)
+	}
+}
+
 func (s *SubscriptionsSupervisor) kinesisClient(stream, region string, creds *corev1.Secret) (*kinesis.Kinesis, error) {
 	if creds == nil {
 		return nil, fmt.Errorf("Credentials data is nil")

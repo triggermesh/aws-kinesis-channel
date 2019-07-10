@@ -142,6 +142,7 @@ func (r *Reconciler) reconcile(ctx context.Context, kinesisChannel *v1alpha1.Kin
 			logging.FromContext(ctx).Error("Error updating subscriptions", zap.Any("channel", kinesisChannel), zap.Error(err))
 			return err
 		}
+		r.kinesisDispatcher.DeleteKinesisSession(ctx, kinesisChannel)
 		removeFinalizer(kinesisChannel)
 		_, err := r.KinesisClientSet.MessagingV1alpha1().KinesisChannels(kinesisChannel.Namespace).Update(kinesisChannel)
 		return err
