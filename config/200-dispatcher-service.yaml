@@ -12,14 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
+apiVersion: v1
+kind: Service
 metadata:
-  name: kinesischannels.messaging.triggermesh.dev
+  name: kinesis-ch-dispatcher
+  namespace: knative-eventing
+  labels:
+      messaging.triggermesh.dev/channel: kinesis-channel
+      messaging.triggermesh.dev/role: dispatcher
 spec:
-  group: messaging.triggermesh.dev
-  version: v1alpha1
-  names:
-    kind: KinesisChannel
-    plural: kinesischannels
-  scope: Namespaced
+  selector:
+      messaging.triggermesh.dev/channel: kinesis-channel
+      messaging.triggermesh.dev/role: dispatcher
+  ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 8080
+

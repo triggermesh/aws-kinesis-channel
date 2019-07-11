@@ -1,0 +1,8 @@
+apiVersion: messaging.triggermesh.dev/v1alpha1
+kind: KinesisChannel
+metadata:
+  name: aws-kinesis-test
+spec:
+  stream_name: triggermesh-test-stream
+  account_region: us-east-2
+  account_creds: awscreds

@@ -26,8 +26,6 @@ import (
 	eventingduck "github.com/knative/eventing/pkg/apis/duck/v1alpha1"
 	eventingv1alpha1 "github.com/knative/eventing/pkg/apis/eventing/v1alpha1"
 	"github.com/knative/eventing/pkg/logging"
-	"github.com/knative/eventing/pkg/provisioners/fanout"
-	"github.com/knative/eventing/pkg/provisioners/multichannelfanout"
 	"github.com/knative/pkg/controller"
 	"github.com/triggermesh/aws-kinesis-provisioner/pkg/apis/messaging/v1alpha1"
 	messaginginformers "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/informers/externalversions/messaging/v1alpha1"
@@ -37,6 +35,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -135,14 +134,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 func (r *Reconciler) reconcile(ctx context.Context, kinesisChannel *v1alpha1.KinesisChannel) error {
 	// TODO update dispatcher API and use Channelable or KinesisChannel.
-	c := toChannel(kinesisChannel)
 
 	// See if the channel has been deleted.
 	if kinesisChannel.DeletionTimestamp != nil {
-		if _, err := r.kinesisDispatcher.UpdateSubscriptions(c, true); err != nil {
-			logging.FromContext(ctx).Error("Error updating subscriptions", zap.Any("channel", c), zap.Error(err))
+		if _, err := r.kinesisDispatcher.UpdateSubscriptions(ctx, kinesisChannel, true); err != nil {
+			logging.FromContext(ctx).Error("Error updating subscriptions", zap.Any("channel", kinesisChannel), zap.Error(err))
 			return err
 		}
+		r.kinesisDispatcher.DeleteKinesisSession(ctx, kinesisChannel)
 		removeFinalizer(kinesisChannel)
 		_, err := r.KinesisClientSet.MessagingV1alpha1().KinesisChannels(kinesisChannel.Namespace).Update(kinesisChannel)
 		return err
@@ -154,10 +153,20 @@ func (r *Reconciler) reconcile(ctx context.Context, kinesisChannel *v1alpha1.Kin
 		return err
 	}
 
+	if !r.kinesisDispatcher.KinesisSessionExist(ctx, kinesisChannel) {
+		secret, err := r.KubeClientSet.CoreV1().Secrets(kinesisChannel.Namespace).Get(kinesisChannel.Spec.AccountCreds, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if err := r.kinesisDispatcher.CreateKinesisSession(ctx, kinesisChannel, secret); err != nil {
+			return err
+		}
+	}
+
 	// Try to subscribe.
-	failedSubscriptions, err := r.kinesisDispatcher.UpdateSubscriptions(c, false)
+	failedSubscriptions, err := r.kinesisDispatcher.UpdateSubscriptions(ctx, kinesisChannel, false)
 	if err != nil {
-		logging.FromContext(ctx).Error("Error updating subscriptions", zap.Any("channel", c), zap.Error(err))
+		logging.FromContext(ctx).Error("Error updating subscriptions", zap.Any("channel", kinesisChannel), zap.Error(err))
 		return err
 	}
 	kinesisChannel.Status.SubscribableStatus = r.createSubscribableStatus(kinesisChannel.Spec.Subscribable, failedSubscriptions)
@@ -189,9 +198,9 @@ func (r *Reconciler) reconcile(ctx context.Context, kinesisChannel *v1alpha1.Kin
 		logging.FromContext(ctx).Error("Error updating host to channel map", zap.Error(err))
 		return err
 	}
-
 	return nil
 }
+
 func (r *Reconciler) createSubscribableStatus(subscribable *eventingduck.Subscribable, failedSubscriptions map[eventingduck.SubscriberSpec]error) *eventingduck.SubscribableStatus {
 	if subscribable == nil {
 		return nil
@@ -229,28 +238,6 @@ func (r *Reconciler) updateStatus(ctx context.Context, desired *v1alpha1.Kinesis
 	existing.Status = desired.Status
 
 	return r.KinesisClientSet.MessagingV1alpha1().KinesisChannels(desired.Namespace).UpdateStatus(existing)
-}
-
-// newConfigFromKinesisChannels creates a new Config from the list of kinesis channels.
-func (r *Reconciler) newConfigFromKinesisChannels(channels []*v1alpha1.KinesisChannel) *multichannelfanout.Config {
-	cc := make([]multichannelfanout.ChannelConfig, 0)
-	for _, c := range channels {
-		channelConfig := multichannelfanout.ChannelConfig{
-			Namespace: c.Namespace,
-			Name:      c.Name,
-			HostName:  c.Status.Address.Hostname,
-		}
-		if c.Spec.Subscribable != nil {
-			channelConfig.FanoutConfig = fanout.Config{
-				AsyncHandler:  true,
-				Subscriptions: c.Spec.Subscribable.Subscribers,
-			}
-		}
-		cc = append(cc, channelConfig)
-	}
-	return &multichannelfanout.Config{
-		ChannelConfigs: cc,
-	}
 }
 
 func (r *Reconciler) ensureFinalizer(channel *v1alpha1.KinesisChannel) error {
