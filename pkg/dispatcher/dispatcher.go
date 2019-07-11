@@ -72,7 +72,8 @@ func NewDispatcher(logger *zap.Logger) (*SubscriptionsSupervisor, error) {
 	}
 	d.setHostToChannelMap(map[string]provisioners.ChannelReference{})
 	receiver, err := provisioners.NewMessageReceiver(
-		createReceiverFunction(d, logger.Sugar()),
+		// not sure where to get context
+		createReceiverFunction(context.Background(), d, logger.Sugar()),
 		logger.Sugar(),
 		provisioners.ResolveChannelFromHostHeader(provisioners.ResolveChannelFromHostFunc(d.getChannelReferenceFromHost)))
 	if err != nil {
@@ -82,16 +83,7 @@ func NewDispatcher(logger *zap.Logger) (*SubscriptionsSupervisor, error) {
 	return d, nil
 }
 
-// func (s *SubscriptionsSupervisor) signalReconnect() {
-// 	select {
-// 	case s.connect <- struct{}{}:
-// 		// Sent.
-// 	default:
-// 		// The Channel is already full, so a reconnection attempt will occur.
-// 	}
-// }
-
-func createReceiverFunction(s *SubscriptionsSupervisor, logger *zap.SugaredLogger) func(provisioners.ChannelReference, *provisioners.Message) error {
+func createReceiverFunction(ctx context.Context, s *SubscriptionsSupervisor, logger *zap.SugaredLogger) func(provisioners.ChannelReference, *provisioners.Message) error {
 	return func(channel provisioners.ChannelReference, m *provisioners.Message) error {
 		logger.Infof("Received message from %q channel", channel.String())
 		// publish to kinesis
@@ -101,12 +93,12 @@ func createReceiverFunction(s *SubscriptionsSupervisor, logger *zap.SugaredLogge
 			return err
 		}
 		cRef := provisioners.ChannelReference{Namespace: channel.Namespace, Name: channel.Name}
-		kk, present := s.kinesisSessions[cRef]
+		kc, present := s.kinesisSessions[cRef]
 		if !present {
 			logger.Errorf("Kinesis session not initialized")
 			return err
 		}
-		if err := kinesisutil.Publish(kk.Client, kk.StreamName, message, logger); err != nil {
+		if err := kinesisutil.Publish(ctx, kc.Client, kc.StreamName, message, logger); err != nil {
 			logger.Errorf("Error during publish: %v", err)
 			return err
 		}
@@ -116,62 +108,11 @@ func createReceiverFunction(s *SubscriptionsSupervisor, logger *zap.SugaredLogge
 }
 
 func (s *SubscriptionsSupervisor) Start(stopCh <-chan struct{}) error {
-	// Starting Connect to establish connection with Kinesis
-	// go s.Connect(stopCh)
-	// Trigger Connect to establish connection with Kinesis
-	// s.signalReconnect()
 	return s.receiver.Start(stopCh)
 }
 
-// func (s *SubscriptionsSupervisor) connectWithRetry(stopCh <-chan struct{}) {
-// 	// re-attempting evey 1 second until the connection is established.
-// 	ticker := time.NewTicker(retryInterval)
-// 	defer ticker.Stop()
-// 	// for {
-// 	// 	kConn, err := kinesisutil.Connect(s.accountAccessKeyID, s.accountSecretAccessKey, s.region, s.logger.Sugar())
-// 	// 	if err == nil {
-// 	// 		// Locking here in order to reduce time in locked state.
-// 	// 		s.kinesisConnMux.Lock()
-// 	// 		s.kinesisConn = kConn
-// 	// 		s.kinesisConnInProgress = false
-// 	// 		s.kinesisConnMux.Unlock()
-// 	// 		return
-// 	// 	}
-// 	// 	s.logger.Sugar().Errorf("Connect() failed with error: %+v, retrying in %s", err, retryInterval.String())
-// 	// 	select {
-// 	// 	case <-ticker.C:
-// 	// 		continue
-// 	// 	case <-stopCh:
-// 	// 		return
-// 	// 	}
-// 	// }
-// }
-
-// Connect is called for initial connection as well as after every disconnect
-// func (s *SubscriptionsSupervisor) Connect(stopCh <-chan struct{}) {
-// 	for {
-// 		select {
-// 		case <-s.connect:
-// 			s.kinesisConnMux.Lock()
-// 			currentConnProgress := s.kinesisConnInProgress
-// 			s.kinesisConnMux.Unlock()
-// 			if !currentConnProgress {
-// 				// Case for lost connectivity, setting InProgress to true to prevent recursion
-// 				s.kinesisConnMux.Lock()
-// 				s.kinesisConnInProgress = true
-// 				s.kinesisConnMux.Unlock()
-// 				go s.connectWithRetry(stopCh)
-// 			}
-// 		case <-stopCh:
-// 			return
-// 		}
-// 	}
-// }
-
 // UpdateSubscriptions creates/deletes the kinesis subscriptions based on channel.Spec.Subscribable.Subscribers
-// Return type:map[eventingduck.SubscriberSpec]error --> Returns a map of subscriberSpec that failed with the value=error encountered.
-// Ignore the value in case error != nil
-func (s *SubscriptionsSupervisor) UpdateSubscriptions(channel *v1alpha1.KinesisChannel, isFinalizer bool) (map[eventingduck.SubscriberSpec]error, error) {
+func (s *SubscriptionsSupervisor) UpdateSubscriptions(ctx context.Context, channel *v1alpha1.KinesisChannel, isFinalizer bool) (map[eventingduck.SubscriberSpec]error, error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
@@ -186,7 +127,7 @@ func (s *SubscriptionsSupervisor) UpdateSubscriptions(channel *v1alpha1.KinesisC
 			return failedToSubscribe, nil
 		}
 		for sub := range chMap {
-			s.unsubscribe(cRef, sub)
+			s.unsubscribe(ctx, cRef, sub)
 		}
 		delete(s.subscriptions, cRef)
 		return failedToSubscribe, nil
@@ -210,7 +151,7 @@ func (s *SubscriptionsSupervisor) UpdateSubscriptions(channel *v1alpha1.KinesisC
 			continue
 		}
 		// subscribe and update failedSubscription if subscribe fails
-		err := s.subscribe(cRef, subRef)
+		err := s.subscribe(ctx, cRef, subRef)
 		if err != nil {
 			errStrings = append(errStrings, err.Error())
 			s.logger.Sugar().Errorf("failed to subscribe (subscription:%q) to channel: %v. Error:%s", sub, cRef, err.Error())
@@ -223,7 +164,7 @@ func (s *SubscriptionsSupervisor) UpdateSubscriptions(channel *v1alpha1.KinesisC
 	// Unsubscribe for deleted subscriptions
 	for sub := range chMap {
 		if ok := activeSubs[sub]; !ok {
-			s.unsubscribe(cRef, sub)
+			s.unsubscribe(ctx, cRef, sub)
 		}
 	}
 	// delete the channel from s.subscriptions if chMap is empty
@@ -233,7 +174,7 @@ func (s *SubscriptionsSupervisor) UpdateSubscriptions(channel *v1alpha1.KinesisC
 	return failedToSubscribe, nil
 }
 
-func (s *SubscriptionsSupervisor) subscribe(channel provisioners.ChannelReference, subscription subscriptionReference) error {
+func (s *SubscriptionsSupervisor) subscribe(ctx context.Context, channel provisioners.ChannelReference, subscription subscriptionReference) error {
 	s.logger.Info("Subscribe to channel:", zap.Any("channel", channel), zap.Any("subscription", subscription))
 
 	session, present := s.kinesisSessions[channel]
@@ -241,7 +182,7 @@ func (s *SubscriptionsSupervisor) subscribe(channel provisioners.ChannelReferenc
 		s.logger.Error("Kinesis session not found:", zap.Any("channel", channel))
 		return fmt.Errorf("Kinesis session for channel %q not found", channel.String())
 	}
-	iterator, err := kinesisutil.GetShardIterator(session.Client, &session.StreamName)
+	iterator, err := kinesisutil.GetShardIterator(ctx, session.Client, &session.StreamName)
 	if err != nil {
 		s.logger.Error("Kinesis shard iterator request error:", zap.Error(err))
 		return fmt.Errorf("Kinesis shard iterator request error: %s", err)
@@ -289,7 +230,7 @@ func (s *SubscriptionsSupervisor) subscribe(channel provisioners.ChannelReferenc
 }
 
 // should be called only while holding subscriptionsMux
-func (s *SubscriptionsSupervisor) unsubscribe(channel provisioners.ChannelReference, subscription subscriptionReference) error {
+func (s *SubscriptionsSupervisor) unsubscribe(ctx context.Context, channel provisioners.ChannelReference, subscription subscriptionReference) error {
 	s.logger.Info("Unsubscribe from channel:", zap.Any("channel", channel), zap.Any("subscription", subscription))
 
 	if _, ok := s.subscriptions[channel][subscription]; ok {

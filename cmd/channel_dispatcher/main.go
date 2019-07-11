@@ -19,7 +19,6 @@ package main
 import (
 	"flag"
 	"log"
-	"os"
 
 	"github.com/knative/eventing/pkg/logconfig"
 	"github.com/knative/pkg/configmap"
@@ -143,12 +142,4 @@ func getLoggingConfigOrDie() map[string]string {
 		}
 		return cm
 	}
-}
-
-func getRequiredEnv(envKey string) string {
-	val, defined := os.LookupEnv(envKey)
-	if !defined {
-		log.Fatalf("required environment variable not defined '%s'", envKey)
-	}
-	return val
 }

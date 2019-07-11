@@ -17,6 +17,7 @@ limitations under the License.
 package kinesisutil
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -38,21 +39,27 @@ func Connect(accountAccessKeyID, accountSecretAccessKey, region string, logger *
 		return nil, err
 	}
 
-	kinesis := kinesis.New(sess)
-	logger.Infof("Connect(): connection to Kinesis established, Conn=%+v", kinesis)
-	return kinesis, nil
+	client := kinesis.New(sess)
+	logger.Infof("Connect(): connection to Kinesis established, Conn=%+v", client)
+	return client, nil
 }
 
-func Create(client *kinesis.Kinesis, streamName string) error {
-	_, err := client.CreateStream(&kinesis.CreateStreamInput{
+func Describe(ctx context.Context, client *kinesis.Kinesis, streamName string) (*kinesis.DescribeStreamOutput, error) {
+	return client.DescribeStreamWithContext(ctx, &kinesis.DescribeStreamInput{
+		StreamName: &streamName,
+	})
+}
+
+func Create(ctx context.Context, client *kinesis.Kinesis, streamName string) error {
+	_, err := client.CreateStreamWithContext(ctx, &kinesis.CreateStreamInput{
 		ShardCount: aws.Int64(1), // by now creating streams with only one shard.
 		StreamName: &streamName,
 	})
 	return err
 }
 
-func Delete(client *kinesis.Kinesis, streamName string) error {
-	_, err := client.DeleteStream(&kinesis.DeleteStreamInput{
+func Delete(ctx context.Context, client *kinesis.Kinesis, streamName string) error {
+	_, err := client.DeleteStreamWithContext(ctx, &kinesis.DeleteStreamInput{
 		EnforceConsumerDeletion: aws.Bool(true), // by now creating streams with only one shard.
 		StreamName:              &streamName,
 	})
@@ -60,8 +67,8 @@ func Delete(client *kinesis.Kinesis, streamName string) error {
 }
 
 // Publish publishes msg to Kinesis stream
-func Publish(client *kinesis.Kinesis, streamName string, msg []byte, logger *zap.SugaredLogger) error {
-	_, err := client.PutRecord(&kinesis.PutRecordInput{
+func Publish(ctx context.Context, client *kinesis.Kinesis, streamName string, msg []byte, logger *zap.SugaredLogger) error {
+	_, err := client.PutRecordWithContext(ctx, &kinesis.PutRecordInput{
 		Data:         msg,
 		PartitionKey: &streamName,
 		StreamName:   &streamName,
@@ -78,8 +85,8 @@ func GetRecord(client *kinesis.Kinesis, shardIterator *string) (*kinesis.GetReco
 }
 
 // GetShardIterator returns "latest" shard iterator for specified stream
-func GetShardIterator(client *kinesis.Kinesis, streamName *string) (*kinesis.GetShardIteratorOutput, error) {
-	res, err := client.DescribeStream(&kinesis.DescribeStreamInput{
+func GetShardIterator(ctx context.Context, client *kinesis.Kinesis, streamName *string) (*kinesis.GetShardIteratorOutput, error) {
+	res, err := client.DescribeStreamWithContext(ctx, &kinesis.DescribeStreamInput{
 		StreamName: streamName,
 	})
 	if err != nil || res.StreamDescription == nil {
@@ -89,7 +96,7 @@ func GetShardIterator(client *kinesis.Kinesis, streamName *string) (*kinesis.Get
 		return nil, fmt.Errorf("Got %d shards, expected 1", l)
 	}
 	t := kinesis.ShardIteratorTypeLatest
-	return client.GetShardIterator(&kinesis.GetShardIteratorInput{
+	return client.GetShardIteratorWithContext(ctx, &kinesis.GetShardIteratorInput{
 		StreamName:        res.StreamDescription.StreamName,
 		ShardId:           res.StreamDescription.Shards[0].ShardId,
 		ShardIteratorType: &t,

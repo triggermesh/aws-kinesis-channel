@@ -212,7 +212,7 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 			if err != nil {
 				return err
 			}
-			if err := r.removeKinesisStream(kc.Spec.StreamName, kclient); err != nil {
+			if err := r.removeKinesisStream(ctx, kc.Spec.StreamName, kclient); err != nil {
 				return err
 			}
 		}
@@ -296,7 +296,7 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 		if err != nil {
 			return err
 		}
-		if err := r.setupKinesisStream(kc.Spec.StreamName, kclient); err != nil {
+		if err := r.setupKinesisStream(ctx, kc.Spec.StreamName, kclient); err != nil {
 			return err
 		}
 	}
@@ -378,16 +378,16 @@ func (r *Reconciler) kinesisClient(stream, region string, creds *corev1.Secret) 
 	return kinesisutil.Connect(string(keyID), string(secret), region, r.Logger)
 }
 
-func (r *Reconciler) setupKinesisStream(stream string, kinesisClient *kinesis.Kinesis) error {
-	if _, err := kinesisutil.Describe(kinesisClient, stream); err == nil {
+func (r *Reconciler) setupKinesisStream(ctx context.Context, stream string, kinesisClient *kinesis.Kinesis) error {
+	if _, err := kinesisutil.Describe(ctx, kinesisClient, stream); err == nil {
 		return nil
 	}
-	return kinesisutil.Create(kinesisClient, stream)
+	return kinesisutil.Create(ctx, kinesisClient, stream)
 }
 
-func (r *Reconciler) removeKinesisStream(stream string, kinesisClient *kinesis.Kinesis) error {
-	if _, err := kinesisutil.Describe(kinesisClient, stream); err != nil {
+func (r *Reconciler) removeKinesisStream(ctx context.Context, stream string, kinesisClient *kinesis.Kinesis) error {
+	if _, err := kinesisutil.Describe(ctx, kinesisClient, stream); err != nil {
 		return nil
 	}
-	return kinesisutil.Delete(kinesisClient, stream)
+	return kinesisutil.Delete(ctx, kinesisClient, stream)
 }

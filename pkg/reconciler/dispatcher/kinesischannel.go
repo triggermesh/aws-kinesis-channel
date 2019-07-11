@@ -134,11 +134,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 func (r *Reconciler) reconcile(ctx context.Context, kinesisChannel *v1alpha1.KinesisChannel) error {
 	// TODO update dispatcher API and use Channelable or KinesisChannel.
-	// c := toChannel(kinesisChannel)
 
 	// See if the channel has been deleted.
 	if kinesisChannel.DeletionTimestamp != nil {
-		if _, err := r.kinesisDispatcher.UpdateSubscriptions(kinesisChannel, true); err != nil {
+		if _, err := r.kinesisDispatcher.UpdateSubscriptions(ctx, kinesisChannel, true); err != nil {
 			logging.FromContext(ctx).Error("Error updating subscriptions", zap.Any("channel", kinesisChannel), zap.Error(err))
 			return err
 		}
@@ -165,7 +164,7 @@ func (r *Reconciler) reconcile(ctx context.Context, kinesisChannel *v1alpha1.Kin
 	}
 
 	// Try to subscribe.
-	failedSubscriptions, err := r.kinesisDispatcher.UpdateSubscriptions(kinesisChannel, false)
+	failedSubscriptions, err := r.kinesisDispatcher.UpdateSubscriptions(ctx, kinesisChannel, false)
 	if err != nil {
 		logging.FromContext(ctx).Error("Error updating subscriptions", zap.Any("channel", kinesisChannel), zap.Error(err))
 		return err
