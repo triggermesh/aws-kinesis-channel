@@ -21,7 +21,7 @@ package v1alpha1
 import (
 	v1alpha1 "github.com/triggermesh/aws-kinesis-provisioner/pkg/apis/messaging/v1alpha1"
 	"github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned/scheme"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
+	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"
 )
 

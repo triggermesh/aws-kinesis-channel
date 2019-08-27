@@ -28,6 +28,8 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	MessagingV1alpha1() messagingv1alpha1.MessagingV1alpha1Interface
+	// Deprecated: please explicitly pick a version if possible.
+	Messaging() messagingv1alpha1.MessagingV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -39,6 +41,12 @@ type Clientset struct {
 
 // MessagingV1alpha1 retrieves the MessagingV1alpha1Client
 func (c *Clientset) MessagingV1alpha1() messagingv1alpha1.MessagingV1alpha1Interface {
+	return c.messagingV1alpha1
+}
+
+// Deprecated: Messaging retrieves the default version of MessagingClient.
+// Please explicitly pick a version.
+func (c *Clientset) Messaging() messagingv1alpha1.MessagingV1alpha1Interface {
 	return c.messagingV1alpha1
 }
 

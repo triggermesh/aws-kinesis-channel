@@ -208,11 +208,11 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 			if err != nil {
 				return err
 			}
-			kclient, err := r.kinesisClient(kc.Spec.StreamName, kc.Spec.AccountRegion, creds)
+			kclient, err := r.kinesisClient(kc.Name, kc.Spec.AccountRegion, creds)
 			if err != nil {
 				return err
 			}
-			if err := r.removeKinesisStream(ctx, kc.Spec.StreamName, kclient); err != nil {
+			if err := r.removeKinesisStream(ctx, kc.Name, kclient); err != nil {
 				return err
 			}
 		}
@@ -292,11 +292,11 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 		if err != nil {
 			return err
 		}
-		kclient, err := r.kinesisClient(kc.Spec.StreamName, kc.Spec.AccountRegion, creds)
+		kclient, err := r.kinesisClient(kc.Name, kc.Spec.AccountRegion, creds)
 		if err != nil {
 			return err
 		}
-		if err := r.setupKinesisStream(ctx, kc.Spec.StreamName, kclient); err != nil {
+		if err := r.setupKinesisStream(ctx, kc.Name, kclient); err != nil {
 			return err
 		}
 		ticker := time.NewTicker(time.Duration(3 * time.Minute))
@@ -307,11 +307,11 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 			return fmt.Errorf("Stream didn't switch to active state in time")
 		default:
 			for {
-				res, err := kinesisutil.Describe(ctx, kclient, kc.Spec.StreamName)
+				res, err := kinesisutil.Describe(ctx, kclient, kc.Name)
 				if err != nil {
 					return err
 				}
-				if *res.StreamDescription.StreamStatus == kinesis.StreamStatusActive {
+				if *res.StreamDescription.StreamStatus == kinesis.StreamStatusActive && len(res.StreamDescription.Shards) > 0 {
 					break
 				}
 				time.Sleep(time.Second)

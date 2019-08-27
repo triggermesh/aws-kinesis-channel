@@ -39,7 +39,6 @@ type KinesisChannel struct {
 // KinesisChannelSpec is the spec for a KinesisChannel resource
 type KinesisChannelSpec struct {
 	Subscribable  *eventingduck.Subscribable `json:"subscribable,omitempty"`
-	StreamName    string                     `json:"stream_name"`
 	AccountRegion string                     `json:"account_region"`
 	AccountCreds  string                     `json:"account_creds"`
 }

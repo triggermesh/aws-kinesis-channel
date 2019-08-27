@@ -284,13 +284,13 @@ func (s *SubscriptionsSupervisor) CreateKinesisSession(ctx context.Context, chan
 	cRef := provisioners.ChannelReference{Namespace: channel.Namespace, Name: channel.Name}
 	_, present := s.kinesisSessions[cRef]
 	if !present {
-		client, err := s.kinesisClient(channel.Spec.StreamName, channel.Spec.AccountRegion, secret)
+		client, err := s.kinesisClient(channel.Name, channel.Spec.AccountRegion, secret)
 		if err != nil {
 			logger.Errorf("Error creating Kinesis session: %v", err)
 			return err
 		}
 		s.kinesisSessions[cRef] = stream{
-			StreamName: channel.Spec.StreamName,
+			StreamName: channel.Name,
 			Client:     client,
 		}
 	}
