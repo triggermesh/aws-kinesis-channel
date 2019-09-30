@@ -6,8 +6,8 @@ import (
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/logging/logkey"
 	"github.com/knative/pkg/system"
-	clientset "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned"
-	kinesisScheme "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/clientset/versioned/scheme"
+	clientset "github.com/triggermesh/aws-kinesis-channel/pkg/client/clientset/versioned"
+	kinesisScheme "github.com/triggermesh/aws-kinesis-channel/pkg/client/clientset/versioned/scheme"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -22,6 +22,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
+// Options represents a set of parameters that being passed to reconciler
 type Options struct {
 	KubeClientSet    kubernetes.Interface
 	DynamicClientSet dynamic.Interface
@@ -41,6 +42,7 @@ type Options struct {
 // This is mutable for testing.
 var resetPeriod = 30 * time.Second
 
+// NewOptionsOrDie as the name implies returns filled Options structure or throws an error
 func NewOptionsOrDie(cfg *rest.Config, logger *zap.SugaredLogger, stopCh <-chan struct{}) Options {
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {

@@ -19,8 +19,8 @@ limitations under the License.
 package messaging
 
 import (
-	internalinterfaces "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/triggermesh/aws-kinesis-provisioner/pkg/client/informers/externalversions/messaging/v1alpha1"
+	internalinterfaces "github.com/triggermesh/aws-kinesis-channel/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/triggermesh/aws-kinesis-channel/pkg/client/informers/externalversions/messaging/v1alpha1"
 )
 
 // Interface provides access to each of this group's versions.

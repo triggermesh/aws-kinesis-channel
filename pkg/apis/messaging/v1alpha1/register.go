@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/triggermesh/aws-kinesis-provisioner/pkg/apis/messaging"
+	"github.com/triggermesh/aws-kinesis-channel/pkg/apis/messaging"
 )
 
 // SchemeGroupVersion is group version used to register these objects

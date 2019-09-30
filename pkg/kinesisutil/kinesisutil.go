@@ -44,12 +44,14 @@ func Connect(accountAccessKeyID, accountSecretAccessKey, region string, logger *
 	return client, nil
 }
 
+// Describe accepts kinesis client and stream name and returns kinesis stream description
 func Describe(ctx context.Context, client *kinesis.Kinesis, streamName string) (*kinesis.DescribeStreamOutput, error) {
 	return client.DescribeStreamWithContext(ctx, &kinesis.DescribeStreamInput{
 		StreamName: &streamName,
 	})
 }
 
+// Create function creates kinesis stream
 func Create(ctx context.Context, client *kinesis.Kinesis, streamName string) error {
 	_, err := client.CreateStreamWithContext(ctx, &kinesis.CreateStreamInput{
 		ShardCount: aws.Int64(1), // by now creating streams with only one shard.
@@ -58,6 +60,7 @@ func Create(ctx context.Context, client *kinesis.Kinesis, streamName string) err
 	return err
 }
 
+// Delete function deletes kinesis stream by its name
 func Delete(ctx context.Context, client *kinesis.Kinesis, streamName string) error {
 	_, err := client.DeleteStreamWithContext(ctx, &kinesis.DeleteStreamInput{
 		EnforceConsumerDeletion: aws.Bool(true), // by now creating streams with only one shard.

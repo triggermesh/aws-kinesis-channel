@@ -30,8 +30,8 @@ import (
 	"github.com/knative/eventing/pkg/logging"
 	"github.com/knative/eventing/pkg/provisioners"
 	"github.com/lxc/lxd/shared/logger"
-	"github.com/triggermesh/aws-kinesis-provisioner/pkg/apis/messaging/v1alpha1"
-	"github.com/triggermesh/aws-kinesis-provisioner/pkg/kinesisutil"
+	"github.com/triggermesh/aws-kinesis-channel/pkg/apis/messaging/v1alpha1"
+	"github.com/triggermesh/aws-kinesis-channel/pkg/kinesisutil"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 )

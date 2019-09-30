@@ -1,3 +1,5 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/triggermesh/aws-kinesis-channel)](https://goreportcard.com/report/github.com/triggermesh/aws-kinesis-channel)
+
 # AWS Kinesis Knative Custom Controller
 
 Cluster channel provisioner provides Knative channels with [AWS Kinesis](https://aws.amazon.com/kinesis/) as message queue backend.

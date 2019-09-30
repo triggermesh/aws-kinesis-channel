@@ -28,7 +28,7 @@ spec:
       labels: *labels
     spec:
       containers:
-      - image: github.com/triggermesh/aws-kinesis-provisioner/cmd/channel_dispatcher
+      - image: github.com/triggermesh/aws-kinesis-channel/cmd/channel_dispatcher
         name: dispatcher
         env:
         - name: CONFIG_LOGGING_NAME
