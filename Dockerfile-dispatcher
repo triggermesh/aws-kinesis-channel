@@ -1,0 +1,8 @@
+FROM golang:latest AS build
+ADD . /go/src/github.com/triggermesh/aws-kinesis-channel/
+RUN cd /go/src/github.com/triggermesh/aws-kinesis-channel/ \
+    && go build -o /go/bin/dispatcher ./cmd/channel_dispatcher/main.go
+
+FROM gcr.io/distroless/base
+COPY --from=build /go/bin/dispatcher /
+CMD ["/dispatcher"]

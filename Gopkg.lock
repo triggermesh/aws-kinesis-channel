@@ -285,19 +285,15 @@
   version = "v1.1.6"
 
 [[projects]]
-  digest = "1:59c0f676e64f60b90346c260aac1b4d34fc0ed9b1533b307bf4d2ff723421abe"
+  digest = "1:d1944aea2e383a2aea45bb603d93539cc4d13f81d2fbf9cd84b69e6c4b3fdd2b"
   name = "github.com/knative/eventing"
   packages = [
     "pkg/apis/duck/v1alpha1",
     "pkg/apis/eventing",
     "pkg/apis/eventing/v1alpha1",
-    "pkg/channelwatcher",
     "pkg/logconfig",
     "pkg/logging",
     "pkg/provisioners",
-    "pkg/provisioners/fanout",
-    "pkg/provisioners/multichannelfanout",
-    "pkg/provisioners/swappable",
     "pkg/reconciler/names",
     "pkg/utils",
   ]
@@ -330,6 +326,14 @@
   ]
   pruneopts = "NUT"
   revision = "0851b95f902d3706fb842fe3160fb697bf5a60e1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:cdfb17f8d91d2f62b2b9c650c303d606b66827c1b88fcfa30394790bf2bca16c"
+  name = "github.com/lxc/lxd"
+  packages = ["shared/logger"]
+  pruneopts = "NUT"
+  revision = "a412cdf26aa0b91775433b426b57c81deb1ecde6"
 
 [[projects]]
   digest = "1:56dbf15e091bf7926cb33a57cb6bdfc658fc6d3498d2f76f10a97ce7856f1fde"
@@ -1022,30 +1026,21 @@
   revision = "db7b694dc208eead64d38030265f702db593fcf2"
 
 [[projects]]
-  digest = "1:bb07f18361544e2f54ab9128d9ab1eb7d6811e12239c57d649bf7f492b5e7c77"
+  digest = "1:daf16bee25fe0de717c56b14d5baa4d48080c765011a17885c213e6840cb4198"
   name = "sigs.k8s.io/controller-runtime"
   packages = [
     "pkg/cache",
     "pkg/cache/internal",
     "pkg/client",
     "pkg/client/apiutil",
-    "pkg/controller",
-    "pkg/event",
-    "pkg/handler",
-    "pkg/internal/controller",
-    "pkg/internal/controller/metrics",
     "pkg/internal/recorder",
     "pkg/leaderelection",
     "pkg/manager",
     "pkg/metrics",
     "pkg/patch",
-    "pkg/predicate",
-    "pkg/reconcile",
     "pkg/recorder",
     "pkg/runtime/inject",
     "pkg/runtime/log",
-    "pkg/source",
-    "pkg/source/internal",
     "pkg/webhook/admission",
     "pkg/webhook/admission/types",
     "pkg/webhook/internal/metrics",
@@ -1073,12 +1068,9 @@
     "github.com/aws/aws-sdk-go/service/kinesis",
     "github.com/knative/eventing/pkg/apis/duck/v1alpha1",
     "github.com/knative/eventing/pkg/apis/eventing/v1alpha1",
-    "github.com/knative/eventing/pkg/channelwatcher",
     "github.com/knative/eventing/pkg/logconfig",
     "github.com/knative/eventing/pkg/logging",
     "github.com/knative/eventing/pkg/provisioners",
-    "github.com/knative/eventing/pkg/provisioners/fanout",
-    "github.com/knative/eventing/pkg/provisioners/multichannelfanout",
     "github.com/knative/eventing/pkg/reconciler/names",
     "github.com/knative/eventing/pkg/utils",
     "github.com/knative/pkg/apis",
@@ -1092,6 +1084,7 @@
     "github.com/knative/pkg/metrics",
     "github.com/knative/pkg/signals",
     "github.com/knative/pkg/system",
+    "github.com/lxc/lxd/shared/logger",
     "go.opencensus.io/stats",
     "go.opencensus.io/stats/view",
     "go.opencensus.io/tag",
@@ -1126,12 +1119,6 @@
     "k8s.io/client-go/tools/clientcmd",
     "k8s.io/client-go/tools/record",
     "k8s.io/client-go/util/flowcontrol",
-    "sigs.k8s.io/controller-runtime/pkg/client",
-    "sigs.k8s.io/controller-runtime/pkg/controller",
-    "sigs.k8s.io/controller-runtime/pkg/handler",
-    "sigs.k8s.io/controller-runtime/pkg/manager",
-    "sigs.k8s.io/controller-runtime/pkg/reconcile",
-    "sigs.k8s.io/controller-runtime/pkg/source",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

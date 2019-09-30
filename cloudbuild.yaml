@@ -1,0 +1,11 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/aws-kinesis-channel-controller:$REVISION_ID', '-t', 'gcr.io/$PROJECT_ID/aws-kinesis-channel-controller:latest', '-f' ,'./Dockerfile-controller', '.' ]
+
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/aws-kinesis-channel-dispatcher:$REVISION_ID', '-t', 'gcr.io/$PROJECT_ID/aws-kinesis-channel-dispatcher:latest', '-f' ,'./Dockerfile-dispatcher', '.' ]
+
+images: 
+  - 'gcr.io/$PROJECT_ID/aws-kinesis-channel-controller'
+  - 'gcr.io/$PROJECT_ID/aws-kinesis-channel-dispatcher'
