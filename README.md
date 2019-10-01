@@ -1,27 +1,30 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/triggermesh/aws-kinesis-channel)](https://goreportcard.com/report/github.com/triggermesh/aws-kinesis-channel)
 
-# AWS Kinesis Knative Custom Controller
+# AWS Kinesis Knative Channel Controller
 
-Cluster channel provisioner provides Knative channels with [AWS Kinesis](https://aws.amazon.com/kinesis/) as message queue backend.
+This Kubernetes controller provides [AWS Kinesis](https://aws.amazon.com/kinesis/) backed Knative Channels. Use it instead of the Kafka or GCP PuSub for message persistency and to get events from AWS.
 
-## Deploy
+## Deploy and Development
 
 We are using [ko](https://github.com/google/ko) tool to deploy custom resources:
+
 ```
 ko apply -f config/
 ```
-This will take all the configurations and deploy AWS Kinesis CRD on your cluster to `knative-eventing` namespace. Change configurations if needed.
+
+This will take all the configurations and deploy the AWS Kinesis CRD on your cluster to `knative-eventing` namespace. Change configurations if needed.
 
 To see it's running use:
+
 ```
 kubectl -n knative-eventing get pods -l messaging.triggermesh.dev/channel=kinesis-channel
 ```
 
 ## Usage
 
-In order for a channel to connect to your AWS account, you should create k8s secret with `aws_access_key_id` and `aws_secret_access_key` keys with valid values. 
+In order for a channel to be created on our AWS account, you need to create a kubernetes secret with `aws_access_key_id` and `aws_secret_access_key` keys with valid values. 
 
-After secret was created you can deploy AWS Kinesis Channel:
+Once the secret is created (e.g `awscreds`) you can deploy a AWS Kinesis Channel like so:
 
 ```
 cat <<EOF | kubectl apply -f -
@@ -36,7 +39,7 @@ spec:
 EOF
 ```
 
-As soon as aws-kinesis-test channel becomes ready you can subscribe to it with different services.
+As soon as `aws-kinesis-test` channel becomes ready you can subscribe to it with different Knative services.
 
 ## Support
 
