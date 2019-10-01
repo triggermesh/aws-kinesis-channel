@@ -6,10 +6,10 @@ This Kubernetes controller provides [AWS Kinesis](https://aws.amazon.com/kinesis
 
 ## Deploy and Development
 
-We are using [ko](https://github.com/google/ko) tool to deploy custom resources:
+Custom resource definition may be deployed by running following command:
 
 ```
-ko apply -f config/
+kubectl apply -f config/
 ```
 
 This will take all the configurations and deploy the AWS Kinesis CRD on your cluster to `knative-eventing` namespace. Change configurations if needed.
