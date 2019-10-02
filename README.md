@@ -2,7 +2,7 @@
 
 # AWS Kinesis Event Channel Controller
 
-This Kubernetes controller provides [AWS Kinesis](https://aws.amazon.com/kinesis/) backed Event Channels. Use it instead of the Kafka or GCP PuSub for message persistency and to get events from AWS.
+This Kubernetes controller provides [AWS Kinesis](https://aws.amazon.com/kinesis/) backed Event Channels. Use it instead of the Kafka or GCP PuSub for message persistence and to get events from AWS.
 
 ## Deploy and Development
 
