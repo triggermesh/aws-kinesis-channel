@@ -1,8 +1,8 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/triggermesh/aws-kinesis-channel)](https://goreportcard.com/report/github.com/triggermesh/aws-kinesis-channel)
 
-# AWS Kinesis Knative Channel Controller
+# AWS Kinesis Event Channel Controller
 
-This Kubernetes controller provides [AWS Kinesis](https://aws.amazon.com/kinesis/) backed Knative Channels. Use it instead of the Kafka or GCP PuSub for message persistency and to get events from AWS.
+This Kubernetes controller provides [AWS Kinesis](https://aws.amazon.com/kinesis/) backed Event Channels. Use it instead of the Kafka or GCP PuSub for message persistency and to get events from AWS.
 
 ## Deploy and Development
 
@@ -39,7 +39,7 @@ spec:
 EOF
 ```
 
-As soon as `aws-kinesis-test` channel becomes ready you can subscribe to it with different Knative services.
+As soon as `aws-kinesis-test` channel becomes ready you can subscribe to it with different services.
 
 ## Support
 
