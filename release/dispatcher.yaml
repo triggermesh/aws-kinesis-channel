@@ -15,21 +15,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kinesis-ch-controller
+  name: kinesis-ch-dispatcher
   namespace: knative-eventing
 spec:
   replicas: 1
   selector:
     matchLabels: &labels
       messaging.triggermesh.dev/channel: kinesis-channel
-      messaging.triggermesh.dev/role: controller
+      messaging.triggermesh.dev/role: dispatcher
   template:
     metadata:
       labels: *labels
     spec:
       containers:
-      - image: github.com/triggermesh/aws-kinesis-channel/cmd/channel_controller
-        name: controller
+      - image: gcr.io/triggermesh/aws-kinesis-channel-dispatcher
+        name: dispatcher
         env:
         - name: CONFIG_LOGGING_NAME
           value: config-logging
@@ -51,6 +51,7 @@ spec:
         - name: config-logging
           configMap:
             name: config-logging
-      serviceAccount: kinesis-controller
-      serviceAccountName: kinesis-controller
+      serviceAccount: kinesis-dispatcher
+      serviceAccountName: kinesis-dispatcher
       # terminationGracePeriodSeconds: 30
+

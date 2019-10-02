@@ -28,7 +28,7 @@ spec:
       labels: *labels
     spec:
       containers:
-      - image: github.com/triggermesh/aws-kinesis-channel/cmd/channel_controller
+      - image: gcr.io/triggermesh/aws-kinesis-channel-controller
         name: controller
         env:
         - name: CONFIG_LOGGING_NAME
