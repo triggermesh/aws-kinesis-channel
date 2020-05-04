@@ -1,4 +1,4 @@
-# Copyright 2019 TriggerMesh, Inc
+# Copyright 2020 TriggerMesh, Inc
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,16 +17,9 @@ kind: ServiceAccount
 metadata:
   name: kinesis-controller
   namespace: knative-eventing
+
 ---
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: kinesis-controller-role
-rules:
-  - apiGroups: ["", "apps", "messaging.triggermesh.dev", "sources.eventing.knative.dev"]
-    resources: ["events", "endpoints", "services", "deployments", "secrets", "kinesischannels", "kinesischannels/status", "containersources"]
-    verbs: ["get", "list", "create", "put", "update", "delete", "patch", "watch"]
----
+
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -40,32 +33,85 @@ roleRef:
   name: kinesis-controller-role
   apiGroup: rbac.authorization.k8s.io
 
+---
 
---- 
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: kinesis-dispatcher
-  namespace: knative-eventing
----
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: kinesis-dispatcher-role
+  name: kinesis-controller-role
+  labels:
+    contrib.eventing.knative.dev/release: devel
 rules:
-  - apiGroups: ["", "apps", "messaging.triggermesh.dev", "sources.eventing.knative.dev"]
-    resources: ["events", "endpoints", "services", "deployments", "secrets", "kinesischannels", "kinesischannels/status", "containersources"]
-    verbs: ["get", "list", "create", "put", "update", "delete", "patch", "watch"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: kinesis-dispatcher-rolebinding
-subjects:
-  - kind: ServiceAccount
-    name: kinesis-dispatcher
-    namespace: knative-eventing
-roleRef:
-  kind: ClusterRole
-  name: kinesis-dispatcher-role
-  apiGroup: rbac.authorization.k8s.io
+  - apiGroups:
+      - messaging.triggermesh.dev
+    resources:
+      - kinesischannels
+      - kinesischannels/status
+    verbs:
+      - get
+      - list
+      - watch
+      - update
+      - patch
+  - apiGroups:
+      - "" # Core API group.
+    resources:
+      - secrets
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+  - apiGroups:
+      - "" # Core API group.
+    resources:
+      - services
+    verbs: &everything
+      - get
+      - list
+      - watch
+      - create
+      - patch
+      - update
+  - apiGroups:
+      - "" # Core API Group.
+    resources:
+      - configmaps
+    resourceNames:
+      - kinesis-dispatcher
+    verbs:
+      - update
+  - apiGroups:
+      - "" # Core API Group.
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+      - update
+  - apiGroups:
+      - "" # Core API group.
+    resources:
+      - endpoints
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - deployments/status
+    verbs: *everything
+  - apiGroups:
+      - "" # Core API group.
+    resources:
+      - serviceaccounts
+    verbs: *everything
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - rolebindings
+    verbs: *everything
+

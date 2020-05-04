@@ -19,11 +19,11 @@ package resources
 import (
 	"fmt"
 
-	"github.com/knative/eventing/pkg/utils"
-	"github.com/knative/pkg/kmeta"
 	"github.com/triggermesh/aws-kinesis-channel/pkg/apis/messaging/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/eventing/pkg/utils"
+	"knative.dev/pkg/kmeta"
 )
 
 const (

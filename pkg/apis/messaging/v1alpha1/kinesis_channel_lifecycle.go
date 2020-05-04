@@ -17,10 +17,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/knative/pkg/apis"
-	"github.com/knative/pkg/apis/duck/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/apis"
+	"knative.dev/pkg/apis/duck/v1alpha1"
 )
 
 var kc = apis.NewLivingConditionSet(
@@ -108,12 +108,20 @@ func (cs *KinesisChannelStatus) PropagateDispatcherStatus(ds *appsv1.DeploymentS
 	}
 }
 
+func (cs *KinesisChannelStatus) MarkDispatcherUnknown(reason, messageFormat string, messageA ...interface{}) {
+	kc.Manage(cs).MarkUnknown(KinesisChannelConditionDispatcherReady, reason, messageFormat, messageA...)
+}
+
 func (cs *KinesisChannelStatus) MarkServiceFailed(reason, messageFormat string, messageA ...interface{}) {
 	kc.Manage(cs).MarkFalse(KinesisChannelConditionServiceReady, reason, messageFormat, messageA...)
 }
 
 func (cs *KinesisChannelStatus) MarkServiceTrue() {
 	kc.Manage(cs).MarkTrue(KinesisChannelConditionServiceReady)
+}
+
+func (cs *KinesisChannelStatus) MarkServiceUnknown(reason, messageFormat string, messageA ...interface{}) {
+	kc.Manage(cs).MarkUnknown(KinesisChannelConditionServiceReady, reason, messageFormat, messageA...)
 }
 
 func (cs *KinesisChannelStatus) MarkChannelServiceFailed(reason, messageFormat string, messageA ...interface{}) {
