@@ -1,4 +1,4 @@
-# Copyright 2019 TriggerMesh, Inc
+# Copyright 2020 TriggerMesh, Inc
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,15 +28,19 @@ spec:
       labels: *labels
     spec:
       containers:
-      - image: github.com/triggermesh/aws-kinesis-channel/cmd/channel_controller
+      - image: ko://github.com/triggermesh/aws-kinesis-channel/cmd/channel_controller
         name: controller
         env:
         - name: CONFIG_LOGGING_NAME
-          value: config-logging
+          value: eventing-config-logging
+        - name: METRICS_DOMAIN
+          value: knative.dev/eventing
         - name: SYSTEM_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: DISPATCHER_IMAGE
+          value: ko://github.com/triggermesh/aws-kinesis-channel/cmd/channel_dispatcher
         resources:
           limits:
             cpu: "1"

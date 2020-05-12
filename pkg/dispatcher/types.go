@@ -17,25 +17,20 @@ limitations under the License.
 package dispatcher
 
 import (
-	"fmt"
-
-	eventingduck "github.com/knative/eventing/pkg/apis/duck/v1alpha1"
+	eventingduckv1beta1 "knative.dev/eventing/pkg/apis/duck/v1beta1"
+	"knative.dev/pkg/apis"
 )
 
 type subscriptionReference struct {
 	UID           string
-	SubscriberURI string
-	ReplyURI      string
+	SubscriberURI *apis.URL
+	ReplyURI      *apis.URL
 }
 
-func newSubscriptionReference(spec eventingduck.SubscriberSpec) subscriptionReference {
+func newSubscriptionReference(spec eventingduckv1beta1.SubscriberSpec) subscriptionReference {
 	return subscriptionReference{
 		UID:           string(spec.UID),
 		SubscriberURI: spec.SubscriberURI,
 		ReplyURI:      spec.ReplyURI,
 	}
-}
-
-func (r *subscriptionReference) String() string {
-	return fmt.Sprintf("%s", r.UID)
 }

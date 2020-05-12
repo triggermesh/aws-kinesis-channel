@@ -35,13 +35,10 @@ func Connect(accountAccessKeyID, accountSecretAccessKey, region string, logger *
 		MaxRetries:  aws.Int(5),
 	})
 	if err != nil {
-		logger.Errorf("Connect(): create new session failed: %v", err)
+		logger.Errorf("create new session failed: %v", err)
 		return nil, err
 	}
-
-	client := kinesis.New(sess)
-	logger.Infof("Connect(): connection to Kinesis established, Conn=%+v", client)
-	return client, nil
+	return kinesis.New(sess), nil
 }
 
 // Describe accepts kinesis client and stream name and returns kinesis stream description
