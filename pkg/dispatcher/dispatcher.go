@@ -27,7 +27,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/cloudevents/sdk-go/v2/binding"
 	"github.com/cloudevents/sdk-go/v2/event"
-	"github.com/lxc/lxd/shared/logger"
 
 	"github.com/triggermesh/aws-kinesis-channel/pkg/apis/messaging/v1alpha1"
 	"github.com/triggermesh/aws-kinesis-channel/pkg/kinesisutil"
@@ -327,8 +326,7 @@ func (s *KinesisDispatcher) CreateKinesisSession(ctx context.Context, channel *v
 	if !present {
 		client, err := s.kinesisClient(channel.Name, channel.Spec.AccountRegion, secret)
 		if err != nil {
-			logger.Errorf("Error creating Kinesis session: %v", err)
-			return err
+			return fmt.Errorf("Error creating Kinesis session: %v", err)
 		}
 		s.kinesisSessions[cRef] = stream{
 			StreamName: channel.Name,

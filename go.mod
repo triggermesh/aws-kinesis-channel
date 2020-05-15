@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go v1.30.18
 	github.com/cloudevents/sdk-go/v2 v2.0.0-RC2
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/lxc/lxd v0.0.0-20200502202108-b0fe8375f34e
+	github.com/knative/eventing v0.14.2
 	github.com/onsi/ginkgo v1.11.0 // indirect
 	github.com/onsi/gomega v1.8.1 // indirect
 	go.opencensus.io v0.22.3
