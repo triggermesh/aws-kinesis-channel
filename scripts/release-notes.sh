@@ -14,7 +14,8 @@ if ! git rev-list ${RELEASE} >/dev/null 2>&1; then
 	exit
 fi
 
-BASE_URL="https://github.com/triggermesh/aws-kinesis-channel/releases/download/${RELEASE}"
+KCHANNEL="aws-kinesis-channel"
+BASE_URL="https://github.com/triggermesh/${KCHANNEL}/releases/download/${RELEASE}"
 PREV_RELEASE=${PREV_RELEASE:-$(git describe --tags --abbrev=0 ${RELEASE}^ 2>/dev/null)}
 PREV_RELEASE=${PREV_RELEASE:-$(git rev-list --max-parents=0 ${RELEASE}^ 2>/dev/null)}
 NOTABLE_CHANGES=$(git cat-file -p ${RELEASE} | sed '/-----BEGIN PGP SIGNATURE-----/,//d' | tail -n +6)
@@ -31,9 +32,9 @@ RELEASE_ASSETS_TABLE=$(
   echo -n "|"; for command in ${COMMANDS}; do echo -n "--|"; done ; echo
   echo -n "|"
   for command in ${COMMANDS}; do
-    echo -n " ([container](https://gcr.io/triggermesh/${source}-source-${command}:${RELEASE}))"
+    echo -n " ([container](https://gcr.io/triggermesh/${KCHANNEL}-${command}:${RELEASE}))"
     for platform in ${PLATFORMS}; do
-      echo -n " ([${platform}](${BASE_URL}/${source}-${command}-${platform%/*}-${platform#*/}))"
+      echo -n " ([${platform}](${BASE_URL}/${KCHANNEL}-${command}-${platform%/*}-${platform#*/}))"
     done
     echo -n " |"
   done
