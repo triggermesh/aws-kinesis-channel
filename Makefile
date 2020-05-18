@@ -15,7 +15,7 @@ DIST_DIR          ?= $(OUTPUT_DIR)
 
 DOCKER            ?= docker
 IMAGE_REPO        ?= gcr.io/triggermesh
-IMAGE_NAME        ?= $(IMAGE_REPO)/$(KCHANNEL)-source
+IMAGE_NAME        ?= $(IMAGE_REPO)/$(KCHANNEL)
 IMAGE_TAG         ?= latest
 IMAGE_SHA         ?= $(shell git rev-parse HEAD)
 
