@@ -89,6 +89,11 @@ fmt: ## Format source files
 fmt-test: ## Check source formatting
 	@test -z $(shell $(GOFMT) -l $(shell $(GO) list -f '{{$$d := .Dir}}{{range .GoFiles}}{{$$d}}/{{.}} {{end}} {{$$d := .Dir}}{{range .TestGoFiles}}{{$$d}}/{{.}} {{end}}' $(GOPKGS)))
 
+image: ## Builds the container image
+	@for bin in $(COMMANDS) ; do \
+		$(DOCKER) build -t $(IMAGE_NAME)-$$bin -f ./cmd/$$bin/Dockerfile . ; \
+	done
+
 clean: ## Clean build artifacts
 	@for bin in $(COMMANDS) ; do \
 		for platform in $(TARGETS); do \
