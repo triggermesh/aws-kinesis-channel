@@ -1,10 +1,38 @@
 steps:
-- name: 'gcr.io/cloud-builders/docker'
-  args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/aws-kinesis-channel-controller:$REVISION_ID', '-t', 'gcr.io/$PROJECT_ID/aws-kinesis-channel-controller:latest', '-f' ,'./Dockerfile-controller', '.' ]
 
-- name: 'gcr.io/cloud-builders/docker'
-  args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/aws-kinesis-channel-dispatcher:$REVISION_ID', '-t', 'gcr.io/$PROJECT_ID/aws-kinesis-channel-dispatcher:latest', '-f' ,'./Dockerfile-dispatcher', '.' ]
+- name: 'gcr.io/kaniko-project/executor:latest'
+  args:
+  - --dockerfile=cmd/dispatcher/Dockerfile
+  - --destination=gcr.io/$PROJECT_ID/aws-kinesis-channel-dispatcher:${COMMIT_SHA}
+  - --destination=gcr.io/$PROJECT_ID/aws-kinesis-channel-dispatcher:${_KANIKO_IMAGE_TAG}
+  - --cache-repo=gcr.io/$PROJECT_ID/aws-kinesis-channel-dispatcher/cache
+  - --cache=${_KANIKO_USE_BUILD_CACHE}
+  - --no-push=${_KANIKO_NO_PUSH}
+  - ${_KANIKO_EXTRA_ARGS}
+  waitFor: ['-']
 
-images: 
-  - 'gcr.io/$PROJECT_ID/aws-kinesis-channel-controller'
-  - 'gcr.io/$PROJECT_ID/aws-kinesis-channel-dispatcher'
+- name: 'gcr.io/kaniko-project/executor:latest'
+  args:
+  - --dockerfile=cmd/controller/Dockerfile
+  - --destination=gcr.io/$PROJECT_ID/aws-kinesis-channel-controller:${COMMIT_SHA}
+  - --destination=gcr.io/$PROJECT_ID/aws-kinesis-channel-controller:${_KANIKO_IMAGE_TAG}
+  - --cache-repo=gcr.io/$PROJECT_ID/aws-kinesis-channel-controller/cache
+  - --cache=${_KANIKO_USE_BUILD_CACHE}
+  - --no-push=${_KANIKO_NO_PUSH}
+  - ${_KANIKO_EXTRA_ARGS}
+  waitFor: ['-']
+
+timeout: 1800s
+
+substitutions:
+  _KANIKO_IMAGE_TAG: "latest"
+  _KANIKO_NO_PUSH: "false"
+  _KANIKO_USE_BUILD_CACHE: "true"
+  _KANIKO_EXTRA_ARGS: ""
+
+options:
+  substitution_option: 'ALLOW_LOOSE'
+
+tags:
+  - aws-kinesis-channel
+  - knative-sources

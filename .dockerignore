@@ -1,0 +1,19 @@
+# Top level files and directories
+/.circleci/
+/.git/
+/.github/
+/example/
+/hack/
+/.dockerignore
+/scripts/release-notes.sh
+
+# Patterns
+**/config/
+**/*.md
+**/*_test.go
+**/.gitignore
+**/cloudbuild.yaml
+**/Dockerfile
+
+# Binaries
+**/_output/
