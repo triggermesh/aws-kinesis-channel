@@ -1,81 +1,107 @@
-# Copyright 2020 TriggerMesh, Inc
-# 
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-# 
-#     http://www.apache.org/licenses/LICENSE-2.0
-# 
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+KCHANNEL           = aws-kinesis-channel
+KCHANNEL_DESC      = Triggermesh AWS Kinesis Channel
+COMMANDS           = controller dispatcher
+
+TARGETS           ?= linux/amd64
+
+BASE_DIR          ?= $(CURDIR)
+
+OUTPUT_DIR        ?= $(BASE_DIR)/_output
+
+BIN_OUTPUT_DIR    ?= $(OUTPUT_DIR)
+TEST_OUTPUT_DIR   ?= $(OUTPUT_DIR)
+COVER_OUTPUT_DIR  ?= $(OUTPUT_DIR)
+DIST_DIR          ?= $(OUTPUT_DIR)
+
+DOCKER            ?= docker
+IMAGE_REPO        ?= gcr.io/triggermesh
+IMAGE_NAME        ?= $(IMAGE_REPO)/$(KCHANNEL)-source
+IMAGE_TAG         ?= latest
+IMAGE_SHA         ?= $(shell git rev-parse HEAD)
+
+GO                ?= go
+GOFMT             ?= gofmt
+GOLINT            ?= golangci-lint run
+GOTOOL            ?= go tool
+GOTEST            ?= gotestsum --junitfile $(TEST_OUTPUT_DIR)/$(KCHANNEL)-unit-tests.xml --format pkgname-and-test-fails --
+
+GOPKGS             = ./cmd/... ./pkg/dispatcher/... ./pkg/apis/... ./pkg/reconciler/... ./pkg/kinesisutil/...
+LDFLAGS            =
+
+HAS_GOTESTSUM     := $(shell command -v gotestsum;)
+HAS_GOLANGCI_LINT := $(shell command -v golangci-lint;)
+
+.PHONY: help mod-download build install release test coverage lint vet fmt fmt-test image clean
+
+all: build
+
+install-gotestsum:
+ifndef HAS_GOTESTSUM
+	curl -SL https://github.com/gotestyourself/gotestsum/releases/download/v0.4.2/gotestsum_0.4.2_linux_amd64.tar.gz | tar -C $(shell go env GOPATH)/bin -zxf -
+endif
+
+install-golangci-lint:
+ifndef HAS_GOLANGCI_LINT
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.26.0
+endif
+
+$(COMMANDS):
+	$(GO) build -ldflags "$(LDFLAGS)" -o $(BIN_OUTPUT_DIR)/$(KCHANNEL)-$@ -installsuffix cgo ./cmd/$@
+
+help: ## Display this help
+	@awk 'BEGIN {FS = ":.*?## "; printf "\n$(KCHANNEL_DESC)\nUsage:\n  make \033[36m<source>\033[0m\n"} /^[a-zA-Z0-9._-]+:.*?## / {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+mod-download: ## Download go modules
+	$(GO) mod download
+
+build: $(COMMANDS) ## Build the binary
+
+release: ## Build release binaries
+	@set -e ; \
+	for bin in $(COMMANDS) ; do \
+		for platform in $(TARGETS); do \
+			GOOS=$${platform%/*} ; \
+			GOARCH=$${platform#*/} ; \
+			RELEASE_BINARY=$(KCHANNEL)-$$bin-$${GOOS}-$${GOARCH} ; \
+			[ $${GOOS} = "windows" ] && RELEASE_BINARY=$${RELEASE_BINARY}.exe ; \
+			echo "GOOS=$${GOOS} GOARCH=$${GOARCH} $(GO) build -ldflags "$(LDFLAGS)" -o $(DIST_DIR)/$${RELEASE_BINARY} -installsuffix cgo" ./cmd/$$bin ; \
+			GOOS=$${GOOS} GOARCH=$${GOARCH} $(GO) build -ldflags "$(LDFLAGS)" -o $(DIST_DIR)/$${RELEASE_BINARY} -installsuffix cgo ./cmd/$$bin ; \
+		done ; \
+	done
+
+test: install-gotestsum ## Run unit tests
+	@mkdir -p $(TEST_OUTPUT_DIR)
+	$(GOTEST) -cover -coverprofile=$(TEST_OUTPUT_DIR)/$(KCHANNEL)-c.out $(GOPKGS)
+
+cover: test ## Generate code coverage
+	@mkdir -p $(COVER_OUTPUT_DIR)
+	$(GOTOOL) cover -html=$(TEST_OUTPUT_DIR)/$(KCHANNEL)-c.out -o $(COVER_OUTPUT_DIR)/$(KCHANNEL)-coverage.html
+
+lint: install-golangci-lint ## Lint source files
+	$(GOLINT) $(GOPKGS)
+
+vet: ## Vet source files
+	$(GO) vet $(GOPKGS)
+
+fmt: ## Format source files
+	$(GOFMT) -s -w $(shell $(GO) list -f '{{$$d := .Dir}}{{range .GoFiles}}{{$$d}}/{{.}} {{end}} {{$$d := .Dir}}{{range .TestGoFiles}}{{$$d}}/{{.}} {{end}}' $(GOPKGS))
+
+fmt-test: ## Check source formatting
+	@test -z $(shell $(GOFMT) -l $(shell $(GO) list -f '{{$$d := .Dir}}{{range .GoFiles}}{{$$d}}/{{.}} {{end}} {{$$d := .Dir}}{{range .TestGoFiles}}{{$$d}}/{{.}} {{end}}' $(GOPKGS)))
+
+clean: ## Clean build artifacts
+	@for bin in $(COMMANDS) ; do \
+		for platform in $(TARGETS); do \
+			GOOS=$${platform%/*} ; \
+			GOARCH=$${platform#*/} ; \
+			RELEASE_BINARY=$(KCHANNEL)-$$bin-$${GOOS}-$${GOARCH} ; \
+			[ $${GOOS} = "windows" ] && RELEASE_BINARY=$${RELEASE_BINARY}.exe ; \
+			$(RM) -v $(DIST_DIR)/$${RELEASE_BINARY}; \
+		done ; \
+		$(RM) -v $(BIN_OUTPUT_DIR)/$(KCHANNEL)-$$bin; \
+	done
+	@$(RM) -v $(TEST_OUTPUT_DIR)/$(KCHANNEL)-c.out $(TEST_OUTPUT_DIR)/$(KCHANNEL)-unit-tests.xml
+	@$(RM) -v $(COVER_OUTPUT_DIR)/$(KCHANNEL)-coverage.html
 
 # Code generation
-#
-# see https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api_changes.md#generate-code
-
-# Name of the Go package for this repository
-PKG := github.com/triggermesh/aws-kinesis-channel
-
-# List of API groups to generate code for
-# e.g. "sources/v1alpha1 sources/v1alpha2"
-API_GROUPS := messaging/v1alpha1
-# generates e.g. "PKG/pkg/apis/sources/v1alpha1 PKG/pkg/apis/sources/v1alpha2"
-api-import-paths := $(foreach group,$(API_GROUPS),$(PKG)/pkg/apis/$(group))
-
-generators := deepcopy client lister informer injection
-
-.PHONY: codegen $(generators)
-
-codegen: $(generators)
-
-# http://blog.jgc.org/2007/06/escaping-comma-and-space-in-gnu-make.html
-comma := ,
-space :=
-space +=
-
-deepcopy:
-	@echo "+ Generating deepcopy funcs for $(API_GROUPS)"
-	@go run k8s.io/code-generator/cmd/deepcopy-gen \
-		--go-header-file hack/boilerplate/boilerplate.go.txt \
-		--input-dirs $(subst $(space),$(comma),$(api-import-paths))
-
-client:
-	@echo "+ Generating clientsets for $(API_GROUPS)"
-	@rm -rf pkg/client/clientset
-	@go run k8s.io/code-generator/cmd/client-gen \
-		--go-header-file hack/boilerplate/boilerplate.go.txt \
-		--input $(subst $(space),$(comma),$(API_GROUPS)) \
-		--input-base $(PKG)/pkg/apis \
-		--output-package $(PKG)/pkg/client/clientset
-
-lister:
-	@echo "+ Generating listers for $(API_GROUPS)"
-	@rm -rf pkg/client/listers
-	@go run k8s.io/code-generator/cmd/lister-gen \
-		--go-header-file hack/boilerplate/boilerplate.go.txt \
-		--input-dirs $(subst $(space),$(comma),$(api-import-paths)) \
-		--output-package $(PKG)/pkg/client/listers
-
-informer:
-	@echo "+ Generating informers for $(API_GROUPS)"
-	@rm -rf pkg/client/informers
-	@go run k8s.io/code-generator/cmd/informer-gen \
-		--go-header-file hack/boilerplate/boilerplate.go.txt \
-		--input-dirs $(subst $(space),$(comma),$(api-import-paths)) \
-		--output-package $(PKG)/pkg/client/informers \
-		--versioned-clientset-package $(PKG)/pkg/client/clientset/internalclientset \
-		--listers-package $(PKG)/pkg/client/listers
-
-injection:
-	@echo "+ Generating injection for $(API_GROUPS)"
-	@rm -rf pkg/client/injection
-	@go run knative.dev/pkg/codegen/cmd/injection-gen \
-		--go-header-file hack/boilerplate/boilerplate.go.txt \
-		--input-dirs $(subst $(space),$(comma),$(api-import-paths)) \
-		--output-package $(PKG)/pkg/client/injection \
-		--versioned-clientset-package $(PKG)/pkg/client/clientset/internalclientset \
-		--listers-package $(PKG)/pkg/client/listers \
-		--external-versions-informers-package $(PKG)/pkg/client/informers/externalversions
+include $(BASE_DIR)/scripts/inc.Codegen
