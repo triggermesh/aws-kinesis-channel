@@ -94,6 +94,16 @@ image: ## Builds the container image
 		$(DOCKER) build -t $(IMAGE_NAME)-$$bin -f ./cmd/$$bin/Dockerfile . ; \
 	done
 
+cloudbuild-test: ## Test container image build with Google Cloud Build
+	if [ -f cloudbuild.yaml ]; then \
+		gcloud builds submit $(BASE_DIR) --config cloudbuild.yaml --substitutions COMMIT_SHA=${IMAGE_SHA},_KANIKO_IMAGE_TAG=_ ; \
+	fi
+
+cloudbuild: ## Build and publish image to GCR
+	if [ -f cloudbuild.yaml ]; then \
+		gcloud builds submit $(BASE_DIR) --config cloudbuild.yaml --substitutions COMMIT_SHA=${IMAGE_SHA},_KANIKO_IMAGE_TAG=${IMAGE_TAG} ; \
+	fi
+
 clean: ## Clean build artifacts
 	@for bin in $(COMMANDS) ; do \
 		for platform in $(TARGETS); do \
