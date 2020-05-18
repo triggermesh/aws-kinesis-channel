@@ -23,6 +23,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/knative/eventing/pkg/apis/messaging"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -51,7 +52,9 @@ import (
 	pkgreconciler "knative.dev/pkg/reconciler"
 
 	"github.com/triggermesh/aws-kinesis-channel/pkg/apis/messaging/v1alpha1"
+	kinesisclientset "github.com/triggermesh/aws-kinesis-channel/pkg/client/clientset/internalclientset"
 	"github.com/triggermesh/aws-kinesis-channel/pkg/client/clientset/internalclientset/scheme"
+	kinesisclient "github.com/triggermesh/aws-kinesis-channel/pkg/client/injection/client"
 	"github.com/triggermesh/aws-kinesis-channel/pkg/client/injection/informers/messaging/v1alpha1/kinesischannel"
 	kinesisChannelReconciler "github.com/triggermesh/aws-kinesis-channel/pkg/client/injection/reconciler/messaging/v1alpha1/kinesischannel"
 	listers "github.com/triggermesh/aws-kinesis-channel/pkg/client/listers/messaging/v1alpha1"
@@ -114,11 +117,13 @@ type Reconciler struct {
 
 	kinesischannelLister   listers.KinesisChannelLister
 	kinesischannelInformer cache.SharedIndexInformer
-	deploymentLister       appsv1listers.DeploymentLister
-	serviceLister          corev1listers.ServiceLister
-	endpointsLister        corev1listers.EndpointsLister
-	serviceAccountLister   corev1listers.ServiceAccountLister
-	roleBindingLister      rbacv1listers.RoleBindingLister
+	kinesisClientSet       kinesisclientset.Interface
+
+	deploymentLister     appsv1listers.DeploymentLister
+	serviceLister        corev1listers.ServiceLister
+	endpointsLister      corev1listers.EndpointsLister
+	serviceAccountLister corev1listers.ServiceAccountLister
+	roleBindingLister    rbacv1listers.RoleBindingLister
 }
 
 var (
@@ -145,6 +150,7 @@ func NewController(
 
 		kinesischannelLister:   kinesisChannelInformer.Lister(),
 		kinesischannelInformer: kinesisChannelInformer.Informer(),
+		kinesisClientSet:       kinesisclient.Get(ctx),
 		deploymentLister:       deploymentInformer.Lister(),
 		serviceLister:          serviceInformer.Lister(),
 		endpointsLister:        endpointsInformer.Lister(),
@@ -252,6 +258,12 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, kc *v1alpha1.KinesisChann
 func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel) error {
 	logger := logging.FromContext(ctx)
 
+	// set channelable version annotation
+	err := r.setAnnotations(ctx, kc)
+	if err != nil {
+		return fmt.Errorf("channel annotations update: %s", err)
+	}
+
 	// We reconcile the status of the Channel by looking at:
 	// 1. Dispatcher Deployment for it's readiness.
 	// 2. Dispatcher k8s Service for it's existence.
@@ -259,7 +271,7 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 	// 4. K8s service representing the channel that will use ExternalName to point to the Dispatcher k8s service.
 
 	// Make sure the dispatcher deployment exists and propagate the status to the Channel
-	_, err := r.reconcileDispatcher(ctx, kc)
+	_, err = r.reconcileDispatcher(ctx, kc)
 	if err != nil {
 		return fmt.Errorf("reconcile dispatcher: %s", err)
 	}
@@ -316,6 +328,22 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 		}
 	}
 	kc.Status.MarkStreamTrue()
+	return nil
+}
+
+func (r *Reconciler) setAnnotations(ctx context.Context, kc *v1alpha1.KinesisChannel) error {
+	annotations := kc.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+	if version, present := annotations[messaging.SubscribableDuckVersionAnnotation]; !present || version != "v1beta1" {
+		// explicitly set subscribable version
+		// https://github.com/knative/eventing/blob/master/docs/spec/channel.md#annotation-requirements
+		annotations[messaging.SubscribableDuckVersionAnnotation] = "v1beta1"
+		kc.SetAnnotations(annotations)
+		_, err := r.kinesisClientSet.MessagingV1alpha1().KinesisChannels(kc.Namespace).Update(kc)
+		return err
+	}
 	return nil
 }
 
