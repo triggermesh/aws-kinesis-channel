@@ -5,6 +5,7 @@
 /example/
 /hack/
 /.dockerignore
+/.gcloudignore
 /scripts/release-notes.sh
 
 # Patterns
