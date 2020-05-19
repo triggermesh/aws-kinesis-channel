@@ -102,17 +102,19 @@ jobs:
           name: Cloning config repository
           command: git clone -b << parameters.branch >> --single-branch git@github.com:triggermesh/config.git tmconfig
       - run:
-          name: Updating overlays/<< parameters.cluster >>/channels/aws-kinesis manifests
+          name: Updating overlays/<< parameters.cluster >>/channels manifests
           working_directory: tmconfig/
           command: |
-            sed "s/_IMAGE_TAG_/${CIRCLE_TAG:-${CIRCLE_SHA1}}/g" overlays/<< parameters.cluster >>/channels/aws-kinesis/deployment.yaml.PATTERN > overlays/<< parameters.cluster >>/channels/aws-kinesis/deployment.yaml
+            sed -i overlays/<< parameters.cluster >>/channels/deployments.yaml \
+              -e "s|gcr.io/triggermesh/aws-kinesis-channel-controller:.*|gcr.io/triggermesh/aws-kinesis-channel-controller:"${CIRCLE_TAG:-${CIRCLE_SHA1}}"|g" \
+              -e "s|gcr.io/triggermesh/aws-kinesis-channel-dispatcher:.*|gcr.io/triggermesh/aws-kinesis-channel-dispatcher:"${CIRCLE_TAG:-${CIRCLE_SHA1}}"|g"
             git --no-pager diff
       - run:
-          name: Committing overlays/<< parameters.cluster >>/channels/aws-kinesis updates
+          name: Committing overlays/<< parameters.cluster >>/channels updates
           working_directory: tmconfig/
           command: |
             git add overlays
-            git commit -m "Update overlays/<< parameters.cluster >>/channels/aws-kinesis manifest to '${CIRCLE_TAG:-${CIRCLE_SHA1}}'"
+            git commit -m "Update overlays/<< parameters.cluster >>/channels aws-kinesis deployment to '${CIRCLE_TAG:-${CIRCLE_SHA1}}'"
             git push origin << parameters.branch >>
 
   release:
