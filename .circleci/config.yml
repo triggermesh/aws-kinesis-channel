@@ -78,8 +78,6 @@ jobs:
       name: go/default
       tag: '1.14'
     parameters:
-      branch:
-        type: string
       cluster:
         type: string
       committer_name:
@@ -100,7 +98,7 @@ jobs:
             git config --global user.email "<< parameters.committer_email >>"
       - run:
           name: Cloning config repository
-          command: git clone -b << parameters.branch >> --single-branch git@github.com:triggermesh/config.git tmconfig
+          command: git clone --single-branch git@github.com:triggermesh/config.git tmconfig
       - run:
           name: Updating overlays/<< parameters.cluster >>/channels manifests
           working_directory: tmconfig/
@@ -115,7 +113,7 @@ jobs:
           command: |
             git add overlays
             git commit -m "Update overlays/<< parameters.cluster >>/channels aws-kinesis deployment to '${CIRCLE_TAG:-${CIRCLE_SHA1}}'"
-            git push origin << parameters.branch >>
+            git push origin master
 
   release:
     executor:
@@ -172,7 +170,6 @@ workflows:
               only: master
       - deploy:
           name: update-staging-config
-          branch: dev
           cluster: staging
           requires:
             - publish
@@ -183,7 +180,6 @@ workflows:
               only: /^v([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
       - deploy:
           name: update-production-config
-          branch: master
           cluster: prod
           requires:
             - publish
