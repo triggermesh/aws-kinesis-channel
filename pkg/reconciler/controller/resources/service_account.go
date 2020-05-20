@@ -21,7 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// MakeServiceAccount creates a ServiceAccount
+// MakeServiceAccount creates a ServiceAccount.
 func MakeServiceAccount(namespace, name string) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{

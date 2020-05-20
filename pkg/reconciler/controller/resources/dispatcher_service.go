@@ -22,13 +22,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-// MakeDispatcherService creates the Kinesis dispatcher service
+// MakeDispatcherService creates the Kinesis dispatcher service.
 func MakeDispatcherService(namespace string) *corev1.Service {
 	return &corev1.Service{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "Service",
-		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      dispatcherName,
 			Namespace: namespace,

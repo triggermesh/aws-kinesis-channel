@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/kelseyhightower/envconfig"
@@ -27,7 +26,6 @@ import (
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,10 +61,6 @@ import (
 )
 
 const (
-	// controllerAgentName is the string used by this controller to identify
-	// itself when creating events.
-	controllerAgentName = "kinesis-ch-controller"
-
 	dispatcherDeploymentCreated     = "DispatcherDeploymentCreated"
 	dispatcherDeploymentUpdated     = "DispatcherDeploymentUpdated"
 	dispatcherDeploymentFailed      = "DispatcherDeploymentFailed"
@@ -74,11 +68,6 @@ const (
 	dispatcherServiceFailed         = "DispatcherServiceFailed"
 	dispatcherServiceAccountCreated = "DispatcherServiceAccountCreated"
 	dispatcherRoleBindingCreated    = "DispatcherRoleBindingCreated"
-
-	// Name of the corev1.Events emitted from the reconciliation process.
-	channelReconciled         = "ChannelReconciled"
-	channelReconcileFailed    = "ChannelReconcileFailed"
-	channelUpdateStatusFailed = "ChannelUpdateStatusFailed"
 )
 
 type envConfig struct {
@@ -241,7 +230,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, kc *v1alpha1.KinesisChann
 		// we don't want to hang forever if someone removed secret
 		return nil
 	}
-	kclient, err := r.kinesisClient(ctx, kc.Name, kc.Spec.AccountRegion, creds)
+	kclient, err := r.kinesisClient(ctx, kc.Spec.AccountRegion, creds)
 	if err != nil {
 		logger.Errorf("can't create kinesis client: %s", err)
 		// same here, give up if kinesis client cannot be created
@@ -259,7 +248,7 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 	logger := logging.FromContext(ctx)
 
 	// set channelable version annotation
-	err := r.setAnnotations(ctx, kc)
+	err := r.setAnnotations(kc)
 	if err != nil {
 		return fmt.Errorf("channel annotations update: %s", err)
 	}
@@ -319,7 +308,7 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 		if err != nil {
 			return fmt.Errorf("can't get account cred secret: %s", err)
 		}
-		kclient, err := r.kinesisClient(ctx, kc.Name, kc.Spec.AccountRegion, creds)
+		kclient, err := r.kinesisClient(ctx, kc.Spec.AccountRegion, creds)
 		if err != nil {
 			return fmt.Errorf("can't create kinesis client: %s", err)
 		}
@@ -331,7 +320,7 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 	return nil
 }
 
-func (r *Reconciler) setAnnotations(ctx context.Context, kc *v1alpha1.KinesisChannel) error {
+func (r *Reconciler) setAnnotations(kc *v1alpha1.KinesisChannel) error {
 	annotations := kc.GetAnnotations()
 	if annotations == nil {
 		annotations = make(map[string]string)
@@ -354,7 +343,7 @@ func (r *Reconciler) reconcileDispatcher(ctx context.Context, kc *v1alpha1.Kines
 		return nil, err
 	}
 
-	_, err = r.reconcileRoleBinding(ctx, dispatcherName, kc, dispatcherName, sa)
+	err = r.reconcileRoleBinding(ctx, dispatcherName, kc, dispatcherName, sa)
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +353,7 @@ func (r *Reconciler) reconcileDispatcher(ctx context.Context, kc *v1alpha1.Kines
 	// subject in the dispatcher's namespace.
 	// TODO: might change when ConfigMapPropagation lands
 	roleBindingName := fmt.Sprintf("%s-%s", dispatcherName, kc.GetNamespace())
-	_, err = r.reconcileRoleBinding(ctx, roleBindingName, kc, "eventing-config-reader", sa)
+	err = r.reconcileRoleBinding(ctx, roleBindingName, kc, "eventing-config-reader", sa)
 	if err != nil {
 		return nil, err
 	}
@@ -375,32 +364,36 @@ func (r *Reconciler) reconcileDispatcher(ctx context.Context, kc *v1alpha1.Kines
 
 	expected := resources.MakeDispatcher(args)
 	d, err := r.deploymentLister.Deployments(kc.GetNamespace()).Get(dispatcherName)
-	if err != nil {
-		if apierrs.IsNotFound(err) {
-			d, err := r.KubeClientSet.AppsV1().Deployments(kc.GetNamespace()).Create(expected)
-			if err == nil {
-				controller.GetEventRecorder(ctx).Event(kc, corev1.EventTypeNormal, dispatcherDeploymentCreated, "Dispatcher deployment created")
-				kc.Status.PropagateDispatcherStatus(&d.Status)
-				return d, err
-			} else {
-				kc.Status.MarkDispatcherFailed(dispatcherDeploymentFailed, "Failed to create the dispatcher deployment: %v", err)
-				return d, newDeploymentWarn(err)
-			}
+	switch {
+	case apierrs.IsNotFound(err):
+		d, err := r.KubeClientSet.AppsV1().Deployments(kc.GetNamespace()).Create(expected)
+		if err == nil {
+			controller.GetEventRecorder(ctx).Event(kc, corev1.EventTypeNormal, dispatcherDeploymentCreated, "Dispatcher deployment created")
+			kc.Status.PropagateDispatcherStatus(&d.Status)
+			return d, err
 		}
+		kc.Status.MarkDispatcherFailed(dispatcherDeploymentFailed, "Failed to create the dispatcher deployment: %v", err)
+		return d, newDeploymentWarn(err)
 
+	case err != nil:
 		logging.FromContext(ctx).Error("Unable to get the dispatcher deployment", zap.Error(err))
 		kc.Status.MarkDispatcherUnknown("DispatcherDeploymentFailed", "Failed to get dispatcher deployment: %v", err)
 		return nil, err
-	} else if !reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Image, d.Spec.Template.Spec.Containers[0].Image) {
-		logging.FromContext(ctx).Sugar().Infof("Deployment image is not what we expect it to be, updating Deployment Got: %q Expect: %q", expected.Spec.Template.Spec.Containers[0].Image, d.Spec.Template.Spec.Containers[0].Image)
+	}
+
+	if expected.Spec.Template.Spec.Containers[0].Image != d.Spec.Template.Spec.Containers[0].Image {
+		logging.FromContext(ctx).Sugar().Infof("Deployment image is not what we expect it to be, updating Deployment Got: %q Expect: %q",
+			expected.Spec.Template.Spec.Containers[0].Image, d.Spec.Template.Spec.Containers[0].Image)
+
 		d, err := r.KubeClientSet.AppsV1().Deployments(kc.GetNamespace()).Update(expected)
 		if err == nil {
-			controller.GetEventRecorder(ctx).Event(kc, corev1.EventTypeNormal, dispatcherDeploymentUpdated, "Dispatcher deployment updated")
+			controller.GetEventRecorder(ctx).Event(kc, corev1.EventTypeNormal, dispatcherDeploymentUpdated,
+				"Dispatcher deployment updated")
+
 			kc.Status.PropagateDispatcherStatus(&d.Status)
 			return d, nil
-		} else {
-			kc.Status.MarkServiceFailed("DispatcherDeploymentUpdateFailed", "Failed to update the dispatcher deployment: %v", err)
 		}
+		kc.Status.MarkServiceFailed("DispatcherDeploymentUpdateFailed", "Failed to update the dispatcher deployment: %v", err)
 		return d, newDeploymentWarn(err)
 	}
 
@@ -417,10 +410,9 @@ func (r *Reconciler) reconcileServiceAccount(ctx context.Context, kc *v1alpha1.K
 			if err == nil {
 				controller.GetEventRecorder(ctx).Event(kc, corev1.EventTypeNormal, dispatcherServiceAccountCreated, "Dispatcher service account created")
 				return sa, nil
-			} else {
-				kc.Status.MarkDispatcherFailed("DispatcherDeploymentFailed", "Failed to create the dispatcher service account: %v", err)
-				return sa, newServiceAccountWarn(err)
 			}
+			kc.Status.MarkDispatcherFailed("DispatcherDeploymentFailed", "Failed to create the dispatcher service account: %v", err)
+			return sa, newServiceAccountWarn(err)
 		}
 
 		kc.Status.MarkDispatcherUnknown("DispatcherServiceAccountFailed", "Failed to get dispatcher service account: %v", err)
@@ -457,25 +449,27 @@ func (r *Reconciler) reconcileDispatcherService(ctx context.Context, kc *v1alpha
 	return svc, nil
 }
 
-func (r *Reconciler) reconcileRoleBinding(ctx context.Context, name string, kc *v1alpha1.KinesisChannel, clusterRoleName string, sa *corev1.ServiceAccount) (*rbacv1.RoleBinding, error) {
+func (r *Reconciler) reconcileRoleBinding(ctx context.Context, name string,
+	kc *v1alpha1.KinesisChannel, clusterRoleName string, sa *corev1.ServiceAccount) error {
+
 	ns := kc.GetNamespace()
-	rb, err := r.roleBindingLister.RoleBindings(ns).Get(name)
+	_, err := r.roleBindingLister.RoleBindings(ns).Get(name)
 	if err != nil {
 		if apierrs.IsNotFound(err) {
 			expected := resources.MakeRoleBinding(ns, name, sa, clusterRoleName)
-			rb, err := r.KubeClientSet.RbacV1().RoleBindings(ns).Create(expected)
+			_, err := r.KubeClientSet.RbacV1().RoleBindings(ns).Create(expected)
 			if err == nil {
 				controller.GetEventRecorder(ctx).Event(kc, corev1.EventTypeNormal, dispatcherRoleBindingCreated, "Dispatcher role binding created")
-				return rb, nil
-			} else {
-				kc.Status.MarkDispatcherFailed("DispatcherDeploymentFailed", "Failed to create the dispatcher role binding: %v", err)
-				return rb, newRoleBindingWarn(err)
+				return nil
 			}
+			kc.Status.MarkDispatcherFailed("DispatcherDeploymentFailed", "Failed to create the dispatcher role binding: %v", err)
+			return newRoleBindingWarn(err)
 		}
 		kc.Status.MarkDispatcherUnknown("DispatcherRoleBindingFailed", "Failed to get dispatcher role binding: %v", err)
-		return nil, newRoleBindingWarn(err)
+		return newRoleBindingWarn(err)
 	}
-	return rb, err
+
+	return err
 }
 
 func (r *Reconciler) reconcileChannelService(ctx context.Context, channel *v1alpha1.KinesisChannel) (*corev1.Service, error) {
@@ -492,19 +486,22 @@ func (r *Reconciler) reconcileChannelService(ctx context.Context, channel *v1alp
 	}
 
 	svc, err := r.serviceLister.Services(channel.Namespace).Get(resources.MakeChannelServiceName(channel.Name))
-	if err != nil {
-		if apierrs.IsNotFound(err) {
-			svc, err = r.KubeClientSet.CoreV1().Services(channel.Namespace).Create(expected)
-			if err != nil {
-				logging.FromContext(ctx).Error("failed to create the channel service object", zap.Error(err))
-				channel.Status.MarkChannelServiceFailed("ChannelServiceFailed", fmt.Sprintf("Channel Service failed: %s", err))
-				return nil, err
-			}
-			return svc, nil
+	switch {
+	case apierrs.IsNotFound(err):
+		svc, err = r.KubeClientSet.CoreV1().Services(channel.Namespace).Create(expected)
+		if err != nil {
+			logging.FromContext(ctx).Error("failed to create the channel service object", zap.Error(err))
+			channel.Status.MarkChannelServiceFailed("ChannelServiceFailed", fmt.Sprintf("Channel Service failed: %s", err))
+			return nil, err
 		}
+		return svc, nil
+
+	case err != nil:
 		logger.Error("Unable to get the channel service", zap.Error(err))
 		return nil, err
-	} else if !equality.Semantic.DeepEqual(svc.Spec, expected.Spec) {
+	}
+
+	if !equality.Semantic.DeepEqual(svc.Spec, expected.Spec) {
 		svc = svc.DeepCopy()
 		svc.Spec = expected.Spec
 
@@ -523,9 +520,9 @@ func (r *Reconciler) reconcileChannelService(ctx context.Context, channel *v1alp
 	return svc, nil
 }
 
-func (r *Reconciler) kinesisClient(ctx context.Context, stream, region string, creds *corev1.Secret) (*kinesis.Kinesis, error) {
+func (r *Reconciler) kinesisClient(ctx context.Context, region string, creds *corev1.Secret) (*kinesis.Kinesis, error) {
 	if creds == nil {
-		return nil, fmt.Errorf("Credentials data is nil")
+		return nil, fmt.Errorf("credentials data is nil")
 	}
 	keyID, present := creds.Data["aws_access_key_id"]
 	if !present {

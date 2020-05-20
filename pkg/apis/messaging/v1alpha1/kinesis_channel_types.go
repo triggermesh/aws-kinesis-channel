@@ -30,7 +30,7 @@ import (
 // +genreconciler
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// KinesisChannel is a specification for a KinesisChannel resource
+// KinesisChannel is a specification for a KinesisChannel resource.
 type KinesisChannel struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -44,14 +44,14 @@ var _ apis.Validatable = (*KinesisChannel)(nil)
 var _ apis.Defaultable = (*KinesisChannel)(nil)
 var _ runtime.Object = (*KinesisChannel)(nil)
 
-// KinesisChannelSpec is the spec for a KinesisChannel resource
+// KinesisChannelSpec is the spec for a KinesisChannel resource.
 type KinesisChannelSpec struct {
 	eventingduckv1beta1.SubscribableSpec `json:",inline"`
 	AccountRegion                        string `json:"account_region"`
 	AccountCreds                         string `json:"account_creds"`
 }
 
-// KinesisChannelStatus is the status for a KinesisChannel resource
+// KinesisChannelStatus is the status for a KinesisChannel resource.
 type KinesisChannelStatus struct {
 	// inherits duck/v1beta1 Status, which currently provides:
 	// * ObservedGeneration - the 'Generation' of the Service that was last processed by the controller.
@@ -71,7 +71,7 @@ type KinesisChannelStatus struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// KinesisChannelList is a list of KinesisChannel resources
+// KinesisChannelList is a list of KinesisChannel resources.
 type KinesisChannelList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
@@ -79,7 +79,7 @@ type KinesisChannelList struct {
 	Items []KinesisChannel `json:"items"`
 }
 
-// GetGroupVersionKind returns GroupVersionKind for KinesisChannels
+// GetGroupVersionKind returns GroupVersionKind for KinesisChannels.
 func (c *KinesisChannel) GetGroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind("KinesisChannel")
 }

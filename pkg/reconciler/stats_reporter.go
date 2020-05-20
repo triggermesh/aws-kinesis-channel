@@ -123,7 +123,7 @@ type reporter struct {
 	ctx context.Context
 }
 
-// NewStatsReporter creates a reporter for reconcilers' metrics
+// NewStatsReporter creates a reporter for reconcilers' metrics.
 func NewStatsReporter(reconciler string) (StatsReporter, error) {
 	ctx, err := tag.New(
 		context.Background(),
@@ -134,7 +134,7 @@ func NewStatsReporter(reconciler string) (StatsReporter, error) {
 	return &reporter{ctx: ctx}, nil
 }
 
-// ReportServiceReady reports the time it took a service to become Ready
+// ReportServiceReady reports the time it took a service to become Ready.
 func (r *reporter) ReportReady(kind, namespace, service string, d time.Duration) error {
 	key := fmt.Sprintf("%s/%s", namespace, service)
 	v := int64(d / time.Millisecond)

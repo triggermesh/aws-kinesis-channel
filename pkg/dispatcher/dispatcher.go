@@ -38,7 +38,7 @@ import (
 	"knative.dev/eventing/pkg/logging"
 )
 
-// KinesisDispatcher manages the state of Kinesis Streaming subscriptions
+// KinesisDispatcher manages the state of Kinesis Streaming subscriptions.
 type KinesisDispatcher struct {
 	logger *zap.Logger
 
@@ -49,7 +49,6 @@ type KinesisDispatcher struct {
 	kinesisSessions map[eventingchannels.ChannelReference]stream
 	subscriptions   map[eventingchannels.ChannelReference]map[subscriptionReference]bool
 
-	config           atomic.Value
 	hostToChannelMap atomic.Value
 
 	hostToChannelMapLock sync.Mutex
@@ -58,13 +57,6 @@ type KinesisDispatcher struct {
 type stream struct {
 	StreamName string
 	Client     *kinesis.Kinesis
-}
-
-type headers map[string]string
-
-type data struct {
-	Headers headers `json:"headers"`
-	Payload string  `json:"payload"`
 }
 
 // NewDispatcher returns a new KinesisDispatcher.
@@ -122,7 +114,7 @@ func (s *KinesisDispatcher) Start(ctx context.Context) error {
 	return s.receiver.Start(ctx)
 }
 
-// UpdateSubscriptions creates/deletes the kinesis subscriptions based on channel.Spec.Subscribable.Subscribers
+// UpdateSubscriptions creates/deletes the kinesis subscriptions based on channel.Spec.Subscribable.Subscribers.
 func (s *KinesisDispatcher) UpdateSubscriptions(ctx context.Context, channel *v1alpha1.KinesisChannel, isFinalizer bool) (map[eventingduckv1beta1.SubscriberSpec]error, error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
@@ -138,7 +130,7 @@ func (s *KinesisDispatcher) UpdateSubscriptions(ctx context.Context, channel *v1
 			return failedToSubscribe, nil
 		}
 		for sub := range chMap {
-			s.unsubscribe(ctx, cRef, sub)
+			s.unsubscribe(cRef, sub)
 		}
 		delete(s.subscriptions, cRef)
 		return failedToSubscribe, nil
@@ -152,7 +144,7 @@ func (s *KinesisDispatcher) UpdateSubscriptions(ctx context.Context, channel *v1
 		chMap = make(map[subscriptionReference]bool)
 		s.subscriptions[cRef] = chMap
 	}
-	var errStrings []string
+
 	for _, sub := range subscriptions {
 		// check if the subscription already exist and do nothing in this case
 		subRef := newSubscriptionReference(sub)
@@ -164,7 +156,6 @@ func (s *KinesisDispatcher) UpdateSubscriptions(ctx context.Context, channel *v1
 		// subscribe and update failedSubscription if subscribe fails
 		err := s.subscribe(ctx, cRef, subRef)
 		if err != nil {
-			errStrings = append(errStrings, err.Error())
 			s.logger.Sugar().Errorf("failed to subscribe (subscription:%q) to channel: %v. Error:%s", sub, cRef, err.Error())
 			failedToSubscribe[sub] = err
 			continue
@@ -175,7 +166,7 @@ func (s *KinesisDispatcher) UpdateSubscriptions(ctx context.Context, channel *v1
 	// Unsubscribe for deleted subscriptions
 	for sub := range chMap {
 		if ok := activeSubs[sub]; !ok {
-			s.unsubscribe(ctx, cRef, sub)
+			s.unsubscribe(cRef, sub)
 		}
 	}
 	// delete the channel from s.subscriptions if chMap is empty
@@ -191,12 +182,12 @@ func (s *KinesisDispatcher) subscribe(ctx context.Context, channel eventingchann
 	session, present := s.kinesisSessions[channel]
 	if !present {
 		s.logger.Error("Kinesis session not found", zap.Any("channel", channel))
-		return fmt.Errorf("Kinesis session for channel %q not found", channel.String())
+		return fmt.Errorf("Kinesis session for channel %q not found", channel.String()) //nolint:stylecheck
 	}
 	iterator, err := kinesisutil.GetShardIterator(ctx, session.Client, &session.StreamName)
 	if err != nil {
 		s.logger.Error("Kinesis shard iterator request error", zap.Error(err))
-		return fmt.Errorf("Kinesis shard iterator request error: %s", err)
+		return fmt.Errorf("Kinesis shard iterator request error: %s", err) //nolint:stylecheck
 	}
 	go func(nextRecord *string, channel eventingchannels.ChannelReference, subscription subscriptionReference) {
 		for {
@@ -247,13 +238,10 @@ func (s *KinesisDispatcher) subscribe(ctx context.Context, channel eventingchann
 	return nil
 }
 
-// should be called only while holding subscriptionsMux
-func (s *KinesisDispatcher) unsubscribe(ctx context.Context, channel eventingchannels.ChannelReference, subscription subscriptionReference) {
+// should be called only while holding subscriptionsMux.
+func (s *KinesisDispatcher) unsubscribe(channel eventingchannels.ChannelReference, subscription subscriptionReference) {
 	s.logger.Info("Unsubscribe from channel:", zap.Any("channel", channel), zap.Any("subscription", subscription))
-
-	if _, ok := s.subscriptions[channel][subscription]; ok {
-		delete(s.subscriptions[channel], subscription)
-	}
+	delete(s.subscriptions[channel], subscription)
 }
 
 // UpdateHostToChannelMap will be called from the controller that watches kinesis channels.
@@ -305,7 +293,7 @@ func (s *KinesisDispatcher) getChannelReferenceFromHost(host string) (eventingch
 	chMap := s.getHostToChannelMap()
 	cr, ok := chMap[host]
 	if !ok {
-		return cr, fmt.Errorf("Invalid HostName:%q. HostName not found in any of the watched kinesis channels", host)
+		return cr, fmt.Errorf("invalid HostName:%q. HostName not found in any of the watched kinesis channels", host)
 	}
 	return cr, nil
 }
@@ -324,9 +312,9 @@ func (s *KinesisDispatcher) CreateKinesisSession(ctx context.Context, channel *v
 	cRef := eventingchannels.ChannelReference{Namespace: channel.Namespace, Name: channel.Name}
 	_, present := s.kinesisSessions[cRef]
 	if !present {
-		client, err := s.kinesisClient(channel.Name, channel.Spec.AccountRegion, secret)
+		client, err := s.kinesisClient(channel.Spec.AccountRegion, secret)
 		if err != nil {
-			return fmt.Errorf("Error creating Kinesis session: %v", err)
+			return fmt.Errorf("error creating Kinesis session: %v", err)
 		}
 		s.kinesisSessions[cRef] = stream{
 			StreamName: channel.Name,
@@ -340,14 +328,12 @@ func (s *KinesisDispatcher) DeleteKinesisSession(ctx context.Context, channel *v
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	cRef := eventingchannels.ChannelReference{Namespace: channel.Namespace, Name: channel.Name}
-	if _, present := s.kinesisSessions[cRef]; present {
-		delete(s.kinesisSessions, cRef)
-	}
+	delete(s.kinesisSessions, cRef)
 }
 
-func (s *KinesisDispatcher) kinesisClient(stream, region string, creds *corev1.Secret) (*kinesis.Kinesis, error) {
+func (s *KinesisDispatcher) kinesisClient(region string, creds *corev1.Secret) (*kinesis.Kinesis, error) {
 	if creds == nil {
-		return nil, fmt.Errorf("Credentials data is nil")
+		return nil, fmt.Errorf("credentials data is nil")
 	}
 	keyID, present := creds.Data["aws_access_key_id"]
 	if !present {

@@ -31,7 +31,7 @@ LDFLAGS            =
 HAS_GOTESTSUM     := $(shell command -v gotestsum;)
 HAS_GOLANGCI_LINT := $(shell command -v golangci-lint;)
 
-.PHONY: help mod-download build install release test coverage lint vet fmt fmt-test image clean
+.PHONY: help mod-download build install release test coverage lint fmt fmt-test image clean
 
 all: build
 
@@ -79,9 +79,6 @@ cover: test ## Generate code coverage
 
 lint: install-golangci-lint ## Lint source files
 	$(GOLINT) $(GOPKGS)
-
-vet: ## Vet source files
-	$(GO) vet $(GOPKGS)
 
 fmt: ## Format source files
 	$(GOFMT) -s -w $(shell $(GO) list -f '{{$$d := .Dir}}{{range .GoFiles}}{{$$d}}/{{.}} {{end}} {{$$d := .Dir}}{{range .TestGoFiles}}{{$$d}}/{{.}} {{end}}' $(GOPKGS))

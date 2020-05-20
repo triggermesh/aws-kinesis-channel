@@ -63,10 +63,6 @@ func ExternalService(namespace, service string) ServiceOption {
 func MakeK8sService(kc *v1alpha1.KinesisChannel, opts ...ServiceOption) (*corev1.Service, error) {
 	// Add annotations
 	svc := &corev1.Service{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "Service",
-		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      MakeChannelServiceName(kc.ObjectMeta.Name),
 			Namespace: kc.Namespace,

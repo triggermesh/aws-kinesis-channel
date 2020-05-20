@@ -27,7 +27,9 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/kubernetes/scheme"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -41,8 +43,7 @@ import (
 
 	"github.com/triggermesh/aws-kinesis-channel/pkg/apis/messaging/v1alpha1"
 	kinesisclientset "github.com/triggermesh/aws-kinesis-channel/pkg/client/clientset/internalclientset"
-	"github.com/triggermesh/aws-kinesis-channel/pkg/client/clientset/internalclientset/scheme"
-	kinesisScheme "github.com/triggermesh/aws-kinesis-channel/pkg/client/clientset/internalclientset/scheme"
+	kinesisscheme "github.com/triggermesh/aws-kinesis-channel/pkg/client/clientset/internalclientset/scheme"
 	kinesisclient "github.com/triggermesh/aws-kinesis-channel/pkg/client/injection/client"
 	"github.com/triggermesh/aws-kinesis-channel/pkg/client/injection/informers/messaging/v1alpha1/kinesischannel"
 	listers "github.com/triggermesh/aws-kinesis-channel/pkg/client/listers/messaging/v1alpha1"
@@ -59,7 +60,6 @@ const (
 
 	finalizerName = controllerAgentName
 
-	channelReconciled         = "ChannelReconciled"
 	channelReconcileFailed    = "ChannelReconcileFailed"
 	channelUpdateStatusFailed = "ChannelUpdateStatusFailed"
 )
@@ -82,7 +82,7 @@ var _ controller.Reconciler = (*Reconciler)(nil)
 func init() {
 	// Add run types to the default Kubernetes Scheme so Events can be
 	// logged for run types.
-	_ = kinesisScheme.AddToScheme(scheme.Scheme)
+	utilruntime.Must(kinesisscheme.AddToScheme(scheme.Scheme))
 }
 
 // NewController initializes the controller and is called by the generated code.
@@ -143,7 +143,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 	}
 
 	if !original.Status.IsReady() {
-		return fmt.Errorf("Channel is not ready. Cannot configure and update subscriber status")
+		return fmt.Errorf("channel is not ready. Cannot configure and update subscriber status")
 	}
 
 	// Don't modify the informers copy.
@@ -158,7 +158,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 	}
 
 	// TODO: Should this check for subscribable status rather than entire status?
-	if _, updateStatusErr := r.updateStatus(ctx, kinesisChannel); updateStatusErr != nil {
+	if _, updateStatusErr := r.updateStatus(kinesisChannel); updateStatusErr != nil {
 		logging.FromContext(ctx).Error("Failed to update KinesisChannel status", zap.Error(updateStatusErr))
 		r.recorder.Eventf(kinesisChannel, corev1.EventTypeWarning, channelUpdateStatusFailed, "Failed to update KinesisChannel's status: %v", updateStatusErr)
 		return updateStatusErr
@@ -208,7 +208,7 @@ func (r *Reconciler) reconcile(ctx context.Context, kinesisChannel *v1alpha1.Kin
 	kinesisChannel.Status.SubscribableStatus = r.createSubscribableStatus(kinesisChannel.Spec.SubscribableSpec, failedSubscriptions)
 	if len(failedSubscriptions) > 0 {
 		logging.FromContext(ctx).Error("Some kinesis subscriptions failed to subscribe")
-		return fmt.Errorf("Some kinesis subscriptions failed to subscribe")
+		return fmt.Errorf("some kinesis subscriptions failed to subscribe")
 	}
 
 	kinesisChannels, err := r.kinesischannelLister.List(labels.Everything())
@@ -256,7 +256,7 @@ func (r *Reconciler) createSubscribableStatus(subscribable eventingduckv1beta1.S
 	}
 }
 
-func (r *Reconciler) updateStatus(ctx context.Context, desired *v1alpha1.KinesisChannel) (*v1alpha1.KinesisChannel, error) {
+func (r *Reconciler) updateStatus(desired *v1alpha1.KinesisChannel) (*v1alpha1.KinesisChannel, error) {
 	nc, err := r.kinesischannelLister.KinesisChannels(desired.Namespace).Get(desired.Name)
 	if err != nil {
 		return nil, err

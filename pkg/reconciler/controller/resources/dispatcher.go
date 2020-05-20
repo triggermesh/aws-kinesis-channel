@@ -38,15 +38,11 @@ type DispatcherArgs struct {
 	Image               string
 }
 
-// MakeDispatcher generates the dispatcher deployment for the Kinesis channel
+// MakeDispatcher generates the dispatcher deployment for the Kinesis channel.
 func MakeDispatcher(args DispatcherArgs) *appsv1.Deployment {
 	replicas := int32(1)
 
 	return &appsv1.Deployment{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "apps/v1",
-			Kind:       "Deployments",
-		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      dispatcherName,
 			Namespace: args.DispatcherNamespace,

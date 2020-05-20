@@ -27,7 +27,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Connect creates a new Kinesis-Streaming connection
+// Connect creates a new Kinesis-Streaming connection.
 func Connect(accountAccessKeyID, accountSecretAccessKey, region string, logger *zap.SugaredLogger) (*kinesis.Kinesis, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String(region),
@@ -41,14 +41,14 @@ func Connect(accountAccessKeyID, accountSecretAccessKey, region string, logger *
 	return kinesis.New(sess), nil
 }
 
-// Describe accepts kinesis client and stream name and returns kinesis stream description
+// Describe accepts kinesis client and stream name and returns kinesis stream description.
 func Describe(ctx context.Context, client *kinesis.Kinesis, streamName string) (*kinesis.DescribeStreamOutput, error) {
 	return client.DescribeStreamWithContext(ctx, &kinesis.DescribeStreamInput{
 		StreamName: &streamName,
 	})
 }
 
-// Create function creates kinesis stream
+// Create function creates kinesis stream.
 func Create(ctx context.Context, client *kinesis.Kinesis, streamName string) error {
 	_, err := client.CreateStreamWithContext(ctx, &kinesis.CreateStreamInput{
 		ShardCount: aws.Int64(1), // by now creating streams with only one shard.
@@ -57,7 +57,7 @@ func Create(ctx context.Context, client *kinesis.Kinesis, streamName string) err
 	return err
 }
 
-// Delete function deletes kinesis stream by its name
+// Delete function deletes kinesis stream by its name.
 func Delete(ctx context.Context, client *kinesis.Kinesis, streamName string) error {
 	_, err := client.DeleteStreamWithContext(ctx, &kinesis.DeleteStreamInput{
 		EnforceConsumerDeletion: aws.Bool(true), // by now creating streams with only one shard.
@@ -66,7 +66,7 @@ func Delete(ctx context.Context, client *kinesis.Kinesis, streamName string) err
 	return err
 }
 
-// Publish publishes msg to Kinesis stream
+// Publish publishes msg to Kinesis stream.
 func Publish(ctx context.Context, client *kinesis.Kinesis, streamName string, msg []byte, logger *zap.SugaredLogger) error {
 	_, err := client.PutRecordWithContext(ctx, &kinesis.PutRecordInput{
 		Data:         msg,
@@ -76,7 +76,7 @@ func Publish(ctx context.Context, client *kinesis.Kinesis, streamName string, ms
 	return err
 }
 
-// GetRecord retrieves one stream record by specified shard iterator
+// GetRecord retrieves one stream record by specified shard iterator.
 func GetRecord(client *kinesis.Kinesis, shardIterator *string) (*kinesis.GetRecordsOutput, error) {
 	return client.GetRecords(&kinesis.GetRecordsInput{
 		Limit:         aws.Int64(1),
@@ -84,16 +84,16 @@ func GetRecord(client *kinesis.Kinesis, shardIterator *string) (*kinesis.GetReco
 	})
 }
 
-// GetShardIterator returns "latest" shard iterator for specified stream
+// GetShardIterator returns "latest" shard iterator for specified stream.
 func GetShardIterator(ctx context.Context, client *kinesis.Kinesis, streamName *string) (*kinesis.GetShardIteratorOutput, error) {
 	res, err := client.DescribeStreamWithContext(ctx, &kinesis.DescribeStreamInput{
 		StreamName: streamName,
 	})
 	if err != nil || res.StreamDescription == nil {
-		return nil, fmt.Errorf("Kinesis stream description: %s", err)
+		return nil, fmt.Errorf("Kinesis stream description: %s", err) //nolint:stylecheck
 	}
 	if l := len(res.StreamDescription.Shards); l != 1 {
-		return nil, fmt.Errorf("Got %d shards, expected 1", l)
+		return nil, fmt.Errorf("got %d shards, expected 1", l)
 	}
 	t := kinesis.ShardIteratorTypeLatest
 	return client.GetShardIteratorWithContext(ctx, &kinesis.GetShardIteratorInput{

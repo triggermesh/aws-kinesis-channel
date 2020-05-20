@@ -48,8 +48,8 @@ jobs:
           name: Installing golangci-lint
           command: make install-golangci-lint
       - run:
-          name: Run vet
-          command: make vet
+          name: Run lint
+          command: make lint
       - run:
           name: Run test/cover
           command: make cover
