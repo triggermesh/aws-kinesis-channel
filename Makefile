@@ -25,7 +25,7 @@ GOTOOL            ?= go tool
 GOTEST            ?= gotestsum --junitfile $(TEST_OUTPUT_DIR)/$(KCHANNEL)-unit-tests.xml --format pkgname-and-test-fails --
 
 GOPKGS             = ./cmd/... ./pkg/dispatcher/... ./pkg/apis/... ./pkg/reconciler/... ./pkg/kinesisutil/...
-LDFLAGS            =
+LDFLAGS            = -extldflags=-static -w -s
 
 HAS_GOTESTSUM     := $(shell command -v gotestsum;)
 HAS_GOLANGCI_LINT := $(shell command -v golangci-lint;)
@@ -45,7 +45,7 @@ ifndef HAS_GOLANGCI_LINT
 endif
 
 $(COMMANDS):
-	$(GO) build -ldflags "$(LDFLAGS)" -o $(BIN_OUTPUT_DIR)/$@ -installsuffix cgo ./cmd/$@
+	$(GO) build -ldflags "$(LDFLAGS)" -o $(BIN_OUTPUT_DIR)/$@ ./cmd/$@
 
 help: ## Display this help
 	@awk 'BEGIN {FS = ":.*?## "; printf "\n$(KCHANNEL_DESC)\nUsage:\n  make \033[36m<source>\033[0m\n"} /^[a-zA-Z0-9._-]+:.*?## / {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -63,8 +63,8 @@ release: ## Build release binaries
 			GOARCH=$${platform#*/} ; \
 			RELEASE_BINARY=$$bin-$${GOOS}-$${GOARCH} ; \
 			[ $${GOOS} = "windows" ] && RELEASE_BINARY=$${RELEASE_BINARY}.exe ; \
-			echo "GOOS=$${GOOS} GOARCH=$${GOARCH} $(GO) build -ldflags "$(LDFLAGS)" -o $(DIST_DIR)/$${RELEASE_BINARY} -installsuffix cgo" ./cmd/$$bin ; \
-			GOOS=$${GOOS} GOARCH=$${GOARCH} $(GO) build -ldflags "$(LDFLAGS)" -o $(DIST_DIR)/$${RELEASE_BINARY} -installsuffix cgo ./cmd/$$bin ; \
+			echo "GOOS=$${GOOS} GOARCH=$${GOARCH} $(GO) build -ldflags "$(LDFLAGS)" -o $(DIST_DIR)/$${RELEASE_BINARY}" ./cmd/$$bin ; \
+			GOOS=$${GOOS} GOARCH=$${GOARCH} $(GO) build -ldflags "$(LDFLAGS)" -o $(DIST_DIR)/$${RELEASE_BINARY} ./cmd/$$bin ; \
 		done ; \
 	done
 
