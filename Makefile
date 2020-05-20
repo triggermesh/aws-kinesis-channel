@@ -1,6 +1,7 @@
 KCHANNEL           = aws-kinesis-channel
 KCHANNEL_DESC      = Triggermesh AWS Kinesis Channel
 COMMANDS           = aws-kinesis-channel-controller aws-kinesis-channel-dispatcher
+IMAGES             = $(foreach cmd,$(COMMANDS),$(cmd).image)
 
 TARGETS           ?= linux/amd64
 
@@ -30,7 +31,7 @@ LDFLAGS            = -extldflags=-static -w -s
 HAS_GOTESTSUM     := $(shell command -v gotestsum;)
 HAS_GOLANGCI_LINT := $(shell command -v golangci-lint;)
 
-.PHONY: help mod-download build install release test coverage lint fmt fmt-test image clean
+.PHONY: help mod-download build install release test coverage lint fmt fmt-test images clean
 
 all: build
 
@@ -85,10 +86,10 @@ fmt: ## Format source files
 fmt-test: ## Check source formatting
 	@test -z $(shell $(GOFMT) -l $(shell $(GO) list -f '{{$$d := .Dir}}{{range .GoFiles}}{{$$d}}/{{.}} {{end}} {{$$d := .Dir}}{{range .TestGoFiles}}{{$$d}}/{{.}} {{end}}' $(GOPKGS)))
 
-image: ## Builds the container image
-	@for bin in $(COMMANDS) ; do \
-		$(DOCKER) build -t $(IMAGE_REPO)/$$bin -f ./cmd/$$bin/Dockerfile . ; \
-	done
+images: $(IMAGES) ## Builds container images
+
+$(IMAGES): %.image:
+	$(DOCKER) build -t $(IMAGE_REPO)/$* -f ./cmd/$*/Dockerfile . ;
 
 cloudbuild-test: ## Test container image build with Google Cloud Build
 	if [ -f cloudbuild.yaml ]; then \
