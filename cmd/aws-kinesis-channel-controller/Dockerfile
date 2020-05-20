@@ -10,7 +10,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN BIN_OUTPUT_DIR=/bin make controller && \
+RUN BIN_OUTPUT_DIR=/bin make aws-kinesis-channel-controller && \
     rm -rf ${GOPATH} && \
     rm -rf ${HOME}/.cache
 
@@ -24,6 +24,6 @@ LABEL summary "Triggermesh Channel Controller for AWS Kinesis"
 LABEL description "This is the Triggermesh Knative Channel Controller for AWS Kinesis"
 
 COPY LICENSE /LICENSE
-COPY --from=builder /bin/aws-kinesis-channel-controller /aws-kinesis-channel-controller
+COPY --from=builder /bin/aws-kinesis-channel-controller /
 
 ENTRYPOINT ["/aws-kinesis-channel-controller"]

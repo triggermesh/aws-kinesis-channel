@@ -2,7 +2,7 @@ steps:
 
 - name: 'gcr.io/kaniko-project/executor:latest'
   args:
-  - --dockerfile=cmd/dispatcher/Dockerfile
+  - --dockerfile=cmd/aws-kinesis-channel-dispatcher/Dockerfile
   - --destination=gcr.io/$PROJECT_ID/aws-kinesis-channel-dispatcher:${COMMIT_SHA}
   - --destination=gcr.io/$PROJECT_ID/aws-kinesis-channel-dispatcher:${_KANIKO_IMAGE_TAG}
   - --cache-repo=gcr.io/$PROJECT_ID/aws-kinesis-channel-dispatcher/cache
@@ -13,7 +13,7 @@ steps:
 
 - name: 'gcr.io/kaniko-project/executor:latest'
   args:
-  - --dockerfile=cmd/controller/Dockerfile
+  - --dockerfile=cmd/aws-kinesis-channel-controller/Dockerfile
   - --destination=gcr.io/$PROJECT_ID/aws-kinesis-channel-controller:${COMMIT_SHA}
   - --destination=gcr.io/$PROJECT_ID/aws-kinesis-channel-controller:${_KANIKO_IMAGE_TAG}
   - --cache-repo=gcr.io/$PROJECT_ID/aws-kinesis-channel-controller/cache

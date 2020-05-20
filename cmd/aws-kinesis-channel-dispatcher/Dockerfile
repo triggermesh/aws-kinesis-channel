@@ -10,7 +10,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN BIN_OUTPUT_DIR=/bin make dispatcher && \
+RUN BIN_OUTPUT_DIR=/bin make aws-kinesis-channel-dispatcher && \
     rm -rf ${GOPATH} && \
     rm -rf ${HOME}/.cache
 
@@ -24,6 +24,6 @@ LABEL summary "Triggermesh Channel Dispatcher for AWS Kinesis"
 LABEL description "This is the Triggermesh Knative Channel Dispatcher for AWS Kinesis"
 
 COPY LICENSE /LICENSE
-COPY --from=builder /bin/aws-kinesis-channel-dispatcher /aws-kinesis-channel-dispatcher
+COPY --from=builder /bin/aws-kinesis-channel-dispatcher /
 
 ENTRYPOINT ["/aws-kinesis-channel-dispatcher"]
