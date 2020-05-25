@@ -32,9 +32,9 @@ RELEASE_ASSETS_TABLE=$(
   echo -n "|"; for command in ${COMMANDS}; do echo -n "--|"; done ; echo
   echo -n "|"
   for command in ${COMMANDS}; do
-    echo -n " ([container](https://gcr.io/triggermesh/${KCHANNEL}-${command}:${RELEASE}))"
+    echo -n " ([container](https://gcr.io/triggermesh/${command}:${RELEASE}))"
     for platform in ${PLATFORMS}; do
-      echo -n " ([${platform}](${BASE_URL}/${KCHANNEL}-${command}-${platform%/*}-${platform#*/}))"
+      echo -n " ([${platform}](${BASE_URL}/${command}-${platform%/*}-${platform#*/}))"
     done
     echo -n " |"
   done
