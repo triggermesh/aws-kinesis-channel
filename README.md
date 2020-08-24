@@ -28,7 +28,19 @@ kubectl -n knative-eventing get pods -l messaging.triggermesh.dev/channel=kinesi
 
 ## Usage
 
-In order for a channel to be created on our AWS account, you need to create a kubernetes secret with `aws_access_key_id` and `aws_secret_access_key` keys with valid values. 
+In order for a channel to be created on your AWS account, you need to create a kubernetes secret with `aws_access_key_id` and `aws_secret_access_key` keys with valid values:
+
+```
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: awscreds
+data:
+  aws_access_key_id: <access key>
+  aws_secret_access_key: <secret key>
+EOF
+```
 
 Once the secret is created (e.g `awscreds`) you can deploy a AWS Kinesis Channel like so:
 
@@ -39,13 +51,49 @@ kind: KinesisChannel
 metadata:
   name: aws-kinesis-test
 spec:
-  stream_name: triggermesh-test-stream
   account_region: us-east-2
   account_creds: awscreds
 EOF
 ```
 
 As soon as `aws-kinesis-test` channel becomes ready you can subscribe to it with different services.
+
+### Knative Eventing Broker
+
+In order to use AWS Kinesis channels as a backend for Knative Eventing Broker you just need to create a Configmap with channel template spec. Assuming that your AWS credentials secret name is `awscreds`, here is a Configmap sample:
+
+```
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-br-kinesis-channel
+data:
+  channelTemplateSpec: |
+    apiVersion: messaging.triggermesh.dev/v1alpha1
+    kind: KinesisChannel
+    metadata:
+      annotations:
+        messaging.knative.dev/subscribable: v1beta1
+    spec:
+      account_region: us-east-2
+      account_creds: awscreds
+```
+
+Broker object to utilize Kinesis channels in our case should look like this:
+
+```
+apiVersion: eventing.knative.dev/v1
+kind: Broker
+metadata:
+  annotations:
+    eventing.knative.dev/broker.class: MTChannelBasedBroker
+  name: kinesis-default
+spec:
+  config:
+    apiVersion: v1
+    kind: ConfigMap
+    name: config-br-kinesis-channel
+```
 
 ## Support
 
