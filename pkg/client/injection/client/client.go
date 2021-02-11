@@ -41,8 +41,13 @@ func withClient(ctx context.Context, cfg *rest.Config) context.Context {
 func Get(ctx context.Context) internalclientset.Interface {
 	untyped := ctx.Value(Key{})
 	if untyped == nil {
-		logging.FromContext(ctx).Panic(
-			"Unable to fetch github.com/triggermesh/aws-kinesis-channel/pkg/client/clientset/internalclientset.Interface from context.")
+		if injection.GetConfig(ctx) == nil {
+			logging.FromContext(ctx).Panic(
+				"Unable to fetch github.com/triggermesh/aws-kinesis-channel/pkg/client/clientset/internalclientset.Interface from context. This context is not the application context (which is typically given to constructors via sharedmain).")
+		} else {
+			logging.FromContext(ctx).Panic(
+				"Unable to fetch github.com/triggermesh/aws-kinesis-channel/pkg/client/clientset/internalclientset.Interface from context.")
+		}
 	}
 	return untyped.(internalclientset.Interface)
 }

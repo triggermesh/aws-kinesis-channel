@@ -20,10 +20,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	eventingduckv1beta1 "knative.dev/eventing/pkg/apis/duck/v1beta1"
+	eventingduckv1 "knative.dev/eventing/pkg/apis/duck/v1"
 	"knative.dev/pkg/apis"
-	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 // +genclient
@@ -43,12 +42,14 @@ type KinesisChannel struct {
 var _ apis.Validatable = (*KinesisChannel)(nil)
 var _ apis.Defaultable = (*KinesisChannel)(nil)
 var _ runtime.Object = (*KinesisChannel)(nil)
+var _ duckv1.KRShaped = (*KinesisChannel)(nil)
 
 // KinesisChannelSpec is the spec for a KinesisChannel resource.
 type KinesisChannelSpec struct {
-	eventingduckv1beta1.SubscribableSpec `json:",inline"`
-	AccountRegion                        string `json:"account_region"`
-	AccountCreds                         string `json:"account_creds"`
+	eventingduckv1.SubscribableSpec `json:",inline"`
+	AccountRegion                   string `json:"account_region"`
+	AccountCreds                    string `json:"account_creds"`
+	StreamShards                    int64  `json:"stream_shards"`
 }
 
 // KinesisChannelStatus is the status for a KinesisChannel resource.
@@ -56,17 +57,17 @@ type KinesisChannelStatus struct {
 	// inherits duck/v1beta1 Status, which currently provides:
 	// * ObservedGeneration - the 'Generation' of the Service that was last processed by the controller.
 	// * Conditions - the latest available observations of a resource's current state.
-	duckv1beta1.Status `json:",inline"`
+	duckv1.Status `json:",inline"`
 
 	// KinesisChannel is Addressable. It currently exposes the endpoint as a
 	// fully-qualified DNS name which will distribute traffic over the
 	// provided targets from inside the cluster.
 	//
 	// It generally has the form {channel}.{namespace}.svc.{cluster domain name}
-	duckv1alpha1.AddressStatus `json:",inline"`
+	duckv1.AddressStatus `json:",inline"`
 
 	// Subscribers is populated with the statuses of each of the Channelable's subscribers.
-	eventingduckv1beta1.SubscribableStatus `json:",inline"`
+	eventingduckv1.SubscribableStatus `json:",inline"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

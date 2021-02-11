@@ -28,24 +28,18 @@ spec:
   scope: Namespaced
   subresources:
     status: {}
-  additionalPrinterColumns:
-    - name: Ready
-      type: string
-      JSONPath: ".status.conditions[?(@.type==\"Ready\")].status"
-    - name: Reason
-      type: string
-      JSONPath: ".status.conditions[?(@.type==\"Ready\")].reason"
-    - name: Hostname
-      type: string
-      JSONPath: .status.address.hostname
-    - name: Age
-      type: date
-      JSONPath: .metadata.creationTimestamp
   validation:
     openAPIV3Schema:
       properties:
         spec:
+          type: object
           properties:
+            account_creds:
+              type: string
+            account_region:
+              type: string
+            stream_shards:
+              type: integer
             subscribable:
               type: object
               properties:
@@ -53,8 +47,7 @@ spec:
                   type: array
                   description: "The list of subscribers that have expressed interest in receiving events from this channel."
                   items:
-                    required:
-                      - uid
+                    type: object
                     properties:
                       ref:
                         type: object
@@ -85,3 +78,21 @@ spec:
                       replyURI:
                         type: string
                         minLength: 1
+                    required:
+                      - uid
+          required:
+          - account_creds
+          - account_region
+  additionalPrinterColumns:
+    - name: Ready
+      type: string
+      JSONPath: ".status.conditions[?(@.type==\"Ready\")].status"
+    - name: Reason
+      type: string
+      JSONPath: ".status.conditions[?(@.type==\"Ready\")].reason"
+    - name: Hostname
+      type: string
+      JSONPath: .status.address.hostname
+    - name: Age
+      type: date
+      JSONPath: .metadata.creationTimestamp

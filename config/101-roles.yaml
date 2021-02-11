@@ -114,4 +114,19 @@ rules:
     resources:
       - rolebindings
     verbs: *everything
-
+  # Acquire leases for leader election
+  - apiGroups:
+    - coordination.k8s.io
+    resources:
+    - leases
+    verbs:
+    - create
+  - apiGroups:
+    - coordination.k8s.io
+    resourceNames:
+    - kinesischannel-controller.github.com.triggermesh.aws-kinesis-channel.pkg.reconciler.controller.reconciler.00-of-01
+    resources:
+    - leases
+    verbs:
+    - get
+    - update

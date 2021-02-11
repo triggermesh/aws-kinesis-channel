@@ -18,6 +18,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "github.com/triggermesh/aws-kinesis-channel/pkg/apis/messaging/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -38,7 +40,7 @@ var kinesischannelsResource = schema.GroupVersionResource{Group: "messaging.trig
 var kinesischannelsKind = schema.GroupVersionKind{Group: "messaging.triggermesh.dev", Version: "v1alpha1", Kind: "KinesisChannel"}
 
 // Get takes name of the kinesisChannel, and returns the corresponding kinesisChannel object, and an error if there is any.
-func (c *FakeKinesisChannels) Get(name string, options v1.GetOptions) (result *v1alpha1.KinesisChannel, err error) {
+func (c *FakeKinesisChannels) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.KinesisChannel, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(kinesischannelsResource, c.ns, name), &v1alpha1.KinesisChannel{})
 
@@ -49,7 +51,7 @@ func (c *FakeKinesisChannels) Get(name string, options v1.GetOptions) (result *v
 }
 
 // List takes label and field selectors, and returns the list of KinesisChannels that match those selectors.
-func (c *FakeKinesisChannels) List(opts v1.ListOptions) (result *v1alpha1.KinesisChannelList, err error) {
+func (c *FakeKinesisChannels) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.KinesisChannelList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(kinesischannelsResource, kinesischannelsKind, c.ns, opts), &v1alpha1.KinesisChannelList{})
 
@@ -71,14 +73,14 @@ func (c *FakeKinesisChannels) List(opts v1.ListOptions) (result *v1alpha1.Kinesi
 }
 
 // Watch returns a watch.Interface that watches the requested kinesisChannels.
-func (c *FakeKinesisChannels) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeKinesisChannels) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(kinesischannelsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a kinesisChannel and creates it.  Returns the server's representation of the kinesisChannel, and an error, if there is any.
-func (c *FakeKinesisChannels) Create(kinesisChannel *v1alpha1.KinesisChannel) (result *v1alpha1.KinesisChannel, err error) {
+func (c *FakeKinesisChannels) Create(ctx context.Context, kinesisChannel *v1alpha1.KinesisChannel, opts v1.CreateOptions) (result *v1alpha1.KinesisChannel, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(kinesischannelsResource, c.ns, kinesisChannel), &v1alpha1.KinesisChannel{})
 
@@ -89,7 +91,7 @@ func (c *FakeKinesisChannels) Create(kinesisChannel *v1alpha1.KinesisChannel) (r
 }
 
 // Update takes the representation of a kinesisChannel and updates it. Returns the server's representation of the kinesisChannel, and an error, if there is any.
-func (c *FakeKinesisChannels) Update(kinesisChannel *v1alpha1.KinesisChannel) (result *v1alpha1.KinesisChannel, err error) {
+func (c *FakeKinesisChannels) Update(ctx context.Context, kinesisChannel *v1alpha1.KinesisChannel, opts v1.UpdateOptions) (result *v1alpha1.KinesisChannel, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(kinesischannelsResource, c.ns, kinesisChannel), &v1alpha1.KinesisChannel{})
 
@@ -101,7 +103,7 @@ func (c *FakeKinesisChannels) Update(kinesisChannel *v1alpha1.KinesisChannel) (r
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeKinesisChannels) UpdateStatus(kinesisChannel *v1alpha1.KinesisChannel) (*v1alpha1.KinesisChannel, error) {
+func (c *FakeKinesisChannels) UpdateStatus(ctx context.Context, kinesisChannel *v1alpha1.KinesisChannel, opts v1.UpdateOptions) (*v1alpha1.KinesisChannel, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceAction(kinesischannelsResource, "status", c.ns, kinesisChannel), &v1alpha1.KinesisChannel{})
 
@@ -112,7 +114,7 @@ func (c *FakeKinesisChannels) UpdateStatus(kinesisChannel *v1alpha1.KinesisChann
 }
 
 // Delete takes name of the kinesisChannel and deletes it. Returns an error if one occurs.
-func (c *FakeKinesisChannels) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeKinesisChannels) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(kinesischannelsResource, c.ns, name), &v1alpha1.KinesisChannel{})
 
@@ -120,15 +122,15 @@ func (c *FakeKinesisChannels) Delete(name string, options *v1.DeleteOptions) err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeKinesisChannels) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(kinesischannelsResource, c.ns, listOptions)
+func (c *FakeKinesisChannels) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(kinesischannelsResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.KinesisChannelList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched kinesisChannel.
-func (c *FakeKinesisChannels) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.KinesisChannel, err error) {
+func (c *FakeKinesisChannels) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.KinesisChannel, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(kinesischannelsResource, c.ns, name, pt, data, subresources...), &v1alpha1.KinesisChannel{})
 

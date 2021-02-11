@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -33,13 +34,13 @@ import (
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	eventingduckv1beta1 "knative.dev/eventing/pkg/apis/duck/v1beta1"
+	eventingduckv1 "knative.dev/eventing/pkg/apis/duck/v1"
 	"knative.dev/eventing/pkg/channel/fanout"
 	"knative.dev/eventing/pkg/channel/multichannelfanout"
-	"knative.dev/eventing/pkg/logging"
 	"knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/logging"
 
 	"github.com/triggermesh/aws-kinesis-channel/pkg/apis/messaging/v1alpha1"
 	kinesisclientset "github.com/triggermesh/aws-kinesis-channel/pkg/client/clientset/internalclientset"
@@ -59,9 +60,6 @@ const (
 	controllerAgentName = "kinesis-ch-dispatcher"
 
 	finalizerName = controllerAgentName
-
-	channelReconcileFailed    = "ChannelReconcileFailed"
-	channelUpdateStatusFailed = "ChannelUpdateStatusFailed"
 )
 
 // Reconciler reconciles Kinesis Channels.
@@ -107,7 +105,7 @@ func NewController(ctx context.Context, _ configmap.Watcher) *controller.Impl {
 		kinesischannelLister: kinesisChannelInformer.Lister(),
 		secretLister:         secretsInformer.Lister(),
 	}
-	r.impl = controller.NewImpl(r, logger.Sugar(), ReconcilerName)
+	r.impl = controller.NewImpl(r, logger, ReconcilerName)
 
 	logger.Info("Setting up event handlers")
 
@@ -143,7 +141,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 	}
 
 	if !original.Status.IsReady() {
-		return fmt.Errorf("channel is not ready. Cannot configure and update subscriber status")
+		logging.FromContext(ctx).Error("KinesisChannel is not ready. Cannot configure and update subscriber status")
+		return nil
 	}
 
 	// Don't modify the informers copy.
@@ -152,15 +151,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 	reconcileErr := r.reconcile(ctx, kinesisChannel)
 	if reconcileErr != nil {
 		logging.FromContext(ctx).Error("Error reconciling KinesisChannel", zap.Error(reconcileErr))
-		r.recorder.Eventf(kinesisChannel, corev1.EventTypeWarning, channelReconcileFailed, "KinesisChannel reconciliation failed: %v", reconcileErr)
 	} else {
 		logging.FromContext(ctx).Debug("KinesisChannel reconciled")
 	}
 
 	// TODO: Should this check for subscribable status rather than entire status?
-	if _, updateStatusErr := r.updateStatus(kinesisChannel); updateStatusErr != nil {
+	if _, updateStatusErr := r.updateStatus(ctx, kinesisChannel); updateStatusErr != nil {
 		logging.FromContext(ctx).Error("Failed to update KinesisChannel status", zap.Error(updateStatusErr))
-		r.recorder.Eventf(kinesisChannel, corev1.EventTypeWarning, channelUpdateStatusFailed, "Failed to update KinesisChannel's status: %v", updateStatusErr)
+		// r.recorder.Eventf(kinesisChannel, corev1.EventTypeWarning, channelUpdateStatusFailed, "Failed to update KinesisChannel's status: %v", updateStatusErr)
 		return updateStatusErr
 	}
 
@@ -178,13 +176,13 @@ func (r *Reconciler) reconcile(ctx context.Context, kinesisChannel *v1alpha1.Kin
 		}
 		r.kinesisDispatcher.DeleteKinesisSession(ctx, kinesisChannel)
 		removeFinalizer(kinesisChannel)
-		_, err := r.kinesisClientSet.MessagingV1alpha1().KinesisChannels(kinesisChannel.Namespace).Update(kinesisChannel)
+		_, err := r.kinesisClientSet.MessagingV1alpha1().KinesisChannels(kinesisChannel.Namespace).Update(ctx, kinesisChannel, v1.UpdateOptions{})
 		return err
 	}
 
 	// If we are adding the finalizer for the first time, then ensure that finalizer is persisted
 	// before manipulating Kinesis.
-	if err := r.ensureFinalizer(kinesisChannel); err != nil {
+	if err := r.ensureFinalizer(ctx, kinesisChannel); err != nil {
 		return err
 	}
 
@@ -234,13 +232,13 @@ func (r *Reconciler) reconcile(ctx context.Context, kinesisChannel *v1alpha1.Kin
 	return nil
 }
 
-func (r *Reconciler) createSubscribableStatus(subscribable eventingduckv1beta1.SubscribableSpec, failedSubscriptions map[eventingduckv1beta1.SubscriberSpec]error) eventingduckv1beta1.SubscribableStatus {
+func (r *Reconciler) createSubscribableStatus(subscribable eventingduckv1.SubscribableSpec, failedSubscriptions map[eventingduckv1.SubscriberSpec]error) eventingduckv1.SubscribableStatus {
 	if len(subscribable.Subscribers) == 0 {
-		return eventingduckv1beta1.SubscribableStatus{}
+		return eventingduckv1.SubscribableStatus{}
 	}
-	subscriberStatus := make([]eventingduckv1beta1.SubscriberStatus, 0)
+	subscriberStatus := make([]eventingduckv1.SubscriberStatus, 0)
 	for _, sub := range subscribable.Subscribers {
-		status := eventingduckv1beta1.SubscriberStatus{
+		status := eventingduckv1.SubscriberStatus{
 			UID:                sub.UID,
 			ObservedGeneration: sub.Generation,
 			Ready:              corev1.ConditionTrue,
@@ -251,29 +249,29 @@ func (r *Reconciler) createSubscribableStatus(subscribable eventingduckv1beta1.S
 		}
 		subscriberStatus = append(subscriberStatus, status)
 	}
-	return eventingduckv1beta1.SubscribableStatus{
+	return eventingduckv1.SubscribableStatus{
 		Subscribers: subscriberStatus,
 	}
 }
 
-func (r *Reconciler) updateStatus(desired *v1alpha1.KinesisChannel) (*v1alpha1.KinesisChannel, error) {
+func (r *Reconciler) updateStatus(ctx context.Context, desired *v1alpha1.KinesisChannel) (*v1alpha1.KinesisChannel, error) {
 	nc, err := r.kinesischannelLister.KinesisChannels(desired.Namespace).Get(desired.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	if reflect.DeepEqual(nc.Status, desired.Status) {
+	if reflect.DeepEqual(nc.Status.SubscribableStatus, desired.Status.SubscribableStatus) {
 		return nc, nil
 	}
 
 	// Don't modify the informers copy.
 	existing := nc.DeepCopy()
-	existing.Status = desired.Status
+	existing.Status.SubscribableStatus = desired.Status.SubscribableStatus
 
-	return r.kinesisClientSet.MessagingV1alpha1().KinesisChannels(desired.Namespace).UpdateStatus(existing)
+	return r.kinesisClientSet.MessagingV1alpha1().KinesisChannels(desired.Namespace).UpdateStatus(ctx, existing, v1.UpdateOptions{})
 }
 
-func (r *Reconciler) ensureFinalizer(channel *v1alpha1.KinesisChannel) error {
+func (r *Reconciler) ensureFinalizer(ctx context.Context, channel *v1alpha1.KinesisChannel) error {
 	finalizers := sets.NewString(channel.Finalizers...)
 	if finalizers.Has(finalizerName) {
 		return nil
@@ -291,7 +289,7 @@ func (r *Reconciler) ensureFinalizer(channel *v1alpha1.KinesisChannel) error {
 		return err
 	}
 
-	_, err = r.kinesisClientSet.MessagingV1alpha1().KinesisChannels(channel.GetNamespace()).Patch(channel.GetName(), types.MergePatchType, patch)
+	_, err = r.kinesisClientSet.MessagingV1alpha1().KinesisChannels(channel.GetNamespace()).Patch(ctx, channel.GetName(), types.MergePatchType, patch, v1.PatchOptions{})
 	return err
 }
 
@@ -313,18 +311,25 @@ func (r *Reconciler) newConfigFromKinesisChannels(channels []*v1alpha1.KinesisCh
 	}
 }
 
-// newConfigFromKinesisChannels creates a new Config from the list of kinesis channels.
+// newConfigFromKinesisChannel creates a new Config from the kinesis channel.
 func (r *Reconciler) newChannelConfigFromKinesisChannel(c *v1alpha1.KinesisChannel) *multichannelfanout.ChannelConfig {
 	channelConfig := multichannelfanout.ChannelConfig{
 		Namespace: c.Namespace,
 		Name:      c.Name,
-		HostName:  c.Status.Address.Hostname,
+		HostName:  c.Status.Address.URL.Host,
 	}
-	if c.Spec.Subscribers != nil {
-		channelConfig.FanoutConfig = fanout.Config{
-			AsyncHandler:  true,
-			Subscriptions: c.Spec.Subscribers,
+	fs := []fanout.Subscription{}
+	for _, v := range c.Spec.Subscribers {
+		nfs := fanout.Subscription{
+			Subscriber: v.SubscriberURI.URL(),
+			Reply:      v.ReplyURI.URL(),
+			// DeadLetter: v.Delivery.DeadLetterSink.URI.URL(),
 		}
+		fs = append(fs, nfs)
+	}
+	channelConfig.FanoutConfig = fanout.Config{
+		AsyncHandler:  true,
+		Subscriptions: fs,
 	}
 	return &channelConfig
 }

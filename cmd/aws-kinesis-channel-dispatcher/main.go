@@ -35,5 +35,5 @@ func main() {
 		ctx = injection.WithNamespaceScope(ctx, ns)
 	}
 
-	sharedmain.MainWithContext(ctx, component, controller.NewController)
+	sharedmain.MainWithContext(sharedmain.WithHADisabled(ctx), component, controller.NewController)
 }

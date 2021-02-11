@@ -30,12 +30,15 @@ import (
 
 	"github.com/triggermesh/aws-kinesis-channel/pkg/apis/messaging/v1alpha1"
 	"github.com/triggermesh/aws-kinesis-channel/pkg/kinesisutil"
+
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	eventingduckv1beta1 "knative.dev/eventing/pkg/apis/duck/v1beta1"
+
+	eventingduckv1 "knative.dev/eventing/pkg/apis/duck/v1"
+	"knative.dev/eventing/pkg/channel"
 	eventingchannels "knative.dev/eventing/pkg/channel"
 	"knative.dev/eventing/pkg/channel/multichannelfanout"
-	"knative.dev/eventing/pkg/logging"
+	"knative.dev/pkg/logging"
 )
 
 // KinesisDispatcher manages the state of Kinesis Streaming subscriptions.
@@ -47,7 +50,7 @@ type KinesisDispatcher struct {
 
 	mux             sync.Mutex
 	kinesisSessions map[eventingchannels.ChannelReference]stream
-	subscriptions   map[eventingchannels.ChannelReference]map[subscriptionReference]bool
+	subscriptions   map[eventingchannels.ChannelReference]map[string]eventingduckv1.SubscriberSpec
 
 	hostToChannelMap atomic.Value
 
@@ -61,13 +64,13 @@ type stream struct {
 
 // NewDispatcher returns a new KinesisDispatcher.
 func NewDispatcher(ctx context.Context) (*KinesisDispatcher, error) {
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx).Desugar()
 
 	d := &KinesisDispatcher{
 		logger:          logger,
 		dispatcher:      eventingchannels.NewMessageDispatcher(logger),
 		kinesisSessions: make(map[eventingchannels.ChannelReference]stream),
-		subscriptions:   make(map[eventingchannels.ChannelReference]map[subscriptionReference]bool),
+		subscriptions:   make(map[eventingchannels.ChannelReference]map[string]eventingduckv1.SubscriberSpec),
 	}
 	d.setHostToChannelMap(map[string]eventingchannels.ChannelReference{})
 	receiver, err := eventingchannels.NewMessageReceiver(
@@ -84,8 +87,7 @@ func NewDispatcher(ctx context.Context) (*KinesisDispatcher, error) {
 				logger.Sugar().Errorf("Can't encode event: %v", err)
 				return err
 			}
-			cRef := eventingchannels.ChannelReference{Namespace: channel.Namespace, Name: channel.Name}
-			kc, present := d.kinesisSessions[cRef]
+			kc, present := d.kinesisSessions[channel]
 			if !present {
 				logger.Sugar().Error("Message receiver: kinesis session not initialized")
 				return err
@@ -98,6 +100,7 @@ func NewDispatcher(ctx context.Context) (*KinesisDispatcher, error) {
 			return nil
 		},
 		logger,
+		eventingchannels.NewStatsReporter(channel.ContainerTagKey.Name(), channel.UniqueTagKey.Name()),
 		eventingchannels.ResolveMessageChannelFromHostHeader(d.getChannelReferenceFromHost))
 	if err != nil {
 		return nil, err
@@ -115,131 +118,131 @@ func (s *KinesisDispatcher) Start(ctx context.Context) error {
 }
 
 // UpdateSubscriptions creates/deletes the kinesis subscriptions based on channel.Spec.Subscribable.Subscribers.
-func (s *KinesisDispatcher) UpdateSubscriptions(ctx context.Context, channel *v1alpha1.KinesisChannel, isFinalizer bool) (map[eventingduckv1beta1.SubscriberSpec]error, error) {
+func (s *KinesisDispatcher) UpdateSubscriptions(ctx context.Context, channel *v1alpha1.KinesisChannel, isFinalizer bool) (map[eventingduckv1.SubscriberSpec]error, error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	failedToSubscribe := make(map[eventingduckv1beta1.SubscriberSpec]error)
-	cRef := eventingchannels.ChannelReference{Namespace: channel.Namespace, Name: channel.Name}
-	if len(channel.Spec.Subscribers) == 0 || isFinalizer {
-		s.logger.Sugar().Infof("Empty subscriptions for channel Ref: %v", cRef)
-		chMap, ok := s.subscriptions[cRef]
+	subscriptions := channel.Spec.Subscribers
+	failedSubs := make(map[eventingduckv1.SubscriberSpec]error)
+
+	chanRef := eventingchannels.ChannelReference{Namespace: channel.Namespace, Name: channel.Name}
+	if len(subscriptions) == 0 || isFinalizer {
+		s.logger.Sugar().Infof("Emptying subscriptions for channel Ref: %v", chanRef)
+		subsMap, ok := s.subscriptions[chanRef]
 		if !ok {
 			// nothing to do
-			s.logger.Sugar().Infof("No channel Ref %v found in subscriptions map", cRef)
-			return failedToSubscribe, nil
+			s.logger.Sugar().Infof("No channel Ref %v found in subscriptions map", chanRef)
+			return failedSubs, nil
 		}
-		for sub := range chMap {
-			s.unsubscribe(cRef, sub)
+		for sub := range subsMap {
+			s.unsubscribe(chanRef, sub)
 		}
-		delete(s.subscriptions, cRef)
-		return failedToSubscribe, nil
+		delete(s.subscriptions, chanRef)
+		return failedSubs, nil
 	}
 
-	subscriptions := channel.Spec.Subscribers
-	activeSubs := make(map[subscriptionReference]bool) // it's logically a set
-
-	chMap, ok := s.subscriptions[cRef]
+	activeSubs, ok := s.subscriptions[chanRef]
 	if !ok {
-		chMap = make(map[subscriptionReference]bool)
-		s.subscriptions[cRef] = chMap
+		activeSubs = make(map[string]eventingduckv1.SubscriberSpec)
 	}
 
 	for _, sub := range subscriptions {
 		// check if the subscription already exist and do nothing in this case
-		subRef := newSubscriptionReference(sub)
-		if _, ok := chMap[subRef]; ok {
-			activeSubs[subRef] = true
-			s.logger.Sugar().Infof("Subscription: %v already active for channel: %v", sub, cRef)
+		if _, ok := activeSubs[string(sub.UID)]; ok {
+			activeSubs[string(sub.UID)] = sub
+			s.logger.Sugar().Infof("Subscription: %v already active for channel: %v", sub, chanRef)
 			continue
 		}
 		// subscribe and update failedSubscription if subscribe fails
-		err := s.subscribe(ctx, cRef, subRef)
+		err := s.subscribe(ctx, chanRef, string(sub.UID))
 		if err != nil {
-			s.logger.Sugar().Errorf("failed to subscribe (subscription:%q) to channel: %v. Error:%s", sub, cRef, err.Error())
-			failedToSubscribe[sub] = err
+			s.logger.Sugar().Errorf("failed to subscribe (subscription:%q) to channel: %v. Error:%s", sub, chanRef, err.Error())
+			failedSubs[sub] = err
 			continue
 		}
-		chMap[subRef] = true
-		activeSubs[subRef] = true
+		activeSubs[string(sub.UID)] = sub
 	}
+	s.subscriptions[chanRef] = activeSubs
 	// Unsubscribe for deleted subscriptions
-	for sub := range chMap {
-		if ok := activeSubs[sub]; !ok {
-			s.unsubscribe(cRef, sub)
+	for _, sub := range subscriptions {
+		if _, ok := activeSubs[string(sub.UID)]; !ok {
+			s.unsubscribe(chanRef, string(sub.UID))
 		}
 	}
 	// delete the channel from s.subscriptions if chMap is empty
-	if len(s.subscriptions[cRef]) == 0 {
-		delete(s.subscriptions, cRef)
+	if len(s.subscriptions[chanRef]) == 0 {
+		delete(s.subscriptions, chanRef)
 	}
-	return failedToSubscribe, nil
+	return failedSubs, nil
 }
 
-func (s *KinesisDispatcher) subscribe(ctx context.Context, channel eventingchannels.ChannelReference, subscription subscriptionReference) error {
-	s.logger.Info("Subscribing to channel", zap.Any("channel", channel), zap.Any("subscription", subscription))
+func (s *KinesisDispatcher) subscribe(ctx context.Context, channel eventingchannels.ChannelReference, subID string) error {
+	s.logger.Info("Subscribing to channel", zap.Any("channel", channel), zap.Any("subscription", subID))
 
 	session, present := s.kinesisSessions[channel]
 	if !present {
 		s.logger.Error("Kinesis session not found", zap.Any("channel", channel))
 		return fmt.Errorf("Kinesis session for channel %q not found", channel.String()) //nolint:stylecheck
 	}
-	iterator, err := kinesisutil.GetShardIterator(ctx, session.Client, &session.StreamName)
+	iterators, err := kinesisutil.GetShardIterators(ctx, session.Client, &session.StreamName)
 	if err != nil {
 		s.logger.Error("Kinesis shard iterator request error", zap.Error(err))
 		return fmt.Errorf("Kinesis shard iterator request error: %s", err) //nolint:stylecheck
 	}
-	go func(nextRecord *string, channel eventingchannels.ChannelReference, subscription subscriptionReference) {
-		for {
-			if _, exist := s.subscriptions[channel][subscription]; !exist {
-				s.logger.Info("Subscription not found, stopping message dispatcher")
-				return
-			}
-			if nextRecord == nil {
-				s.logger.Info("Null shard iterator, stop subscriber process. Is the stream closed?")
-				return
-			}
-			record, err := kinesisutil.GetRecord(session.Client, nextRecord)
-			if err != nil {
-				s.logger.Error("Error reading Kinesis stream message", zap.Error(err))
-				continue
-			}
-			nextRecord = record.NextShardIterator
-			if len(record.Records) == 0 {
-				continue
-			}
+	for _, iterator := range iterators {
+		go func(nextRecord *string, channel eventingchannels.ChannelReference, subID string) {
+			for {
+				subscription, exist := s.subscriptions[channel][subID]
+				if !exist {
+					s.logger.Info("Subscription not found, stopping message dispatcher")
+					return
+				}
+				if nextRecord == nil {
+					s.logger.Info("Null shard iterator, stop subscriber process. Is the stream closed?")
+					return
+				}
+				records, err := kinesisutil.GetRecord(session.Client, nextRecord)
+				if records != nil {
+					nextRecord = records.NextShardIterator
+				}
+				if err != nil {
+					s.logger.Error("Error reading Kinesis stream message", zap.Error(err))
+					continue
+				}
 
-			s.logger.Info("New stream message received", zap.Any("sub", subscription.SubscriberURI))
-
-			e := event.New(event.CloudEventsVersionV1)
-			err = e.UnmarshalJSON(record.Records[0].Data)
-			if err != nil {
-				s.logger.Error("Can't decode event", zap.Error(err))
-				continue
+				for _, record := range records.Records {
+					s.logger.Info("New shard records received", zap.Any("sub", subscription.SubscriberURI))
+					e := event.New(event.CloudEventsVersionV1)
+					err = e.UnmarshalJSON(record.Data)
+					if err != nil {
+						s.logger.Error("Can't decode event", zap.Error(err))
+						continue
+					}
+					err = e.Validate()
+					if err != nil {
+						s.logger.Error("Event validation error", zap.Error(err))
+						continue
+					}
+					_, err = s.dispatcher.DispatchMessage(
+						context.Background(),
+						binding.ToMessage(&e),
+						nil,
+						subscription.SubscriberURI.URL(),
+						subscription.ReplyURI.URL(),
+						nil,
+					)
+					if err != nil {
+						s.logger.Error("Message dispatching error", zap.Error(err))
+					}
+				}
 			}
-			err = e.Validate()
-			if err != nil {
-				s.logger.Error("Event validation error", zap.Error(err))
-				continue
-			}
-			err = s.dispatcher.DispatchMessage(
-				context.Background(),
-				binding.ToMessage(&e),
-				nil,
-				subscription.SubscriberURI.URL(),
-				subscription.ReplyURI.URL(),
-				nil,
-			)
-			if err != nil {
-				s.logger.Error("Message dispatching error", zap.Error(err))
-			}
-		}
-	}(iterator.ShardIterator, channel, subscription)
+		}(iterator, channel, subID)
+	}
 	return nil
 }
 
 // should be called only while holding subscriptionsMux.
-func (s *KinesisDispatcher) unsubscribe(channel eventingchannels.ChannelReference, subscription subscriptionReference) {
+func (s *KinesisDispatcher) unsubscribe(channel eventingchannels.ChannelReference, subscription string) {
 	s.logger.Info("Unsubscribe from channel:", zap.Any("channel", channel), zap.Any("subscription", subscription))
 	delete(s.subscriptions[channel], subscription)
 }

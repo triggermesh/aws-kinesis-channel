@@ -22,7 +22,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/knative/eventing/pkg/apis/messaging"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -34,10 +33,9 @@ import (
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	rbacv1listers "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/client-go/tools/cache"
+	"knative.dev/eventing/pkg/apis/messaging"
 	eventingclientset "knative.dev/eventing/pkg/client/clientset/versioned"
 	eventingClient "knative.dev/eventing/pkg/client/injection/client"
-	"knative.dev/eventing/pkg/logging"
-	"knative.dev/eventing/pkg/reconciler/names"
 	"knative.dev/pkg/apis"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
@@ -47,6 +45,8 @@ import (
 	"knative.dev/pkg/client/injection/kube/informers/rbac/v1/rolebinding"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/logging"
+	"knative.dev/pkg/network"
 	pkgreconciler "knative.dev/pkg/reconciler"
 
 	"github.com/triggermesh/aws-kinesis-channel/pkg/apis/messaging/v1alpha1"
@@ -149,7 +149,7 @@ func NewController(
 
 	env := &envConfig{}
 	if err := envconfig.Process("", env); err != nil {
-		logging.FromContext(ctx).Sugar().Panicf("unable to process Kinesis channel's required environment variables: %v", err)
+		logging.FromContext(ctx).Panicf("unable to process Kinesis channel's required environment variables: %v", err)
 	}
 
 	if env.Image == "" {
@@ -219,12 +219,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, kc *v1alpha1.KinesisChan
 }
 
 func (r *Reconciler) FinalizeKind(ctx context.Context, kc *v1alpha1.KinesisChannel) pkgreconciler.Event {
-	logger := logging.FromContext(ctx).Sugar()
+	logger := logging.FromContext(ctx)
 
 	if kc.Spec.AccountCreds == "" {
 		return nil
 	}
-	creds, err := r.KubeClientSet.CoreV1().Secrets(kc.Namespace).Get(kc.Spec.AccountCreds, metav1.GetOptions{})
+	creds, err := r.KubeClientSet.CoreV1().Secrets(kc.Namespace).Get(ctx, kc.Spec.AccountCreds, metav1.GetOptions{})
 	if err != nil {
 		logger.Errorf("can't get account cred secret: %s", err)
 		// we don't want to hang forever if someone removed secret
@@ -248,7 +248,7 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 	logger := logging.FromContext(ctx)
 
 	// set channelable version annotation
-	err := r.setAnnotations(kc)
+	err := r.setAnnotations(ctx, kc)
 	if err != nil {
 		return fmt.Errorf("channel annotations update: %s", err)
 	}
@@ -299,12 +299,12 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 	kc.Status.MarkChannelServiceTrue()
 	kc.Status.SetAddress(&apis.URL{
 		Scheme: "http",
-		Host:   names.ServiceHostName(svc.Name, svc.Namespace),
+		Host:   network.GetServiceHostname(svc.Name, svc.Namespace),
 	})
 
 	if kc.Status.GetCondition(v1alpha1.KinesisChannelConditionStreamReady).IsUnknown() ||
 		kc.Status.GetCondition(v1alpha1.KinesisChannelConditionStreamReady).IsFalse() {
-		creds, err := r.KubeClientSet.CoreV1().Secrets(kc.Namespace).Get(kc.Spec.AccountCreds, metav1.GetOptions{})
+		creds, err := r.KubeClientSet.CoreV1().Secrets(kc.Namespace).Get(ctx, kc.Spec.AccountCreds, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("can't get account cred secret: %s", err)
 		}
@@ -312,7 +312,8 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 		if err != nil {
 			return fmt.Errorf("can't create kinesis client: %s", err)
 		}
-		if err := r.setupKinesisStream(ctx, kc.Name, kclient); err != nil {
+		kc.Status.MarkStreamUnknown("KinesisStreamIsNotActive", "Kinesis Stream is not ready to receive data")
+		if err := r.setupKinesisStream(ctx, kc.Name, kc.Spec.StreamShards, kclient); err != nil {
 			return fmt.Errorf("can't create kinesis stream: %s", err)
 		}
 	}
@@ -320,7 +321,7 @@ func (r *Reconciler) reconcile(ctx context.Context, kc *v1alpha1.KinesisChannel)
 	return nil
 }
 
-func (r *Reconciler) setAnnotations(kc *v1alpha1.KinesisChannel) error {
+func (r *Reconciler) setAnnotations(ctx context.Context, kc *v1alpha1.KinesisChannel) error {
 	annotations := kc.GetAnnotations()
 	if annotations == nil {
 		annotations = make(map[string]string)
@@ -330,7 +331,7 @@ func (r *Reconciler) setAnnotations(kc *v1alpha1.KinesisChannel) error {
 		// https://github.com/knative/eventing/blob/master/docs/spec/channel.md#annotation-requirements
 		annotations[messaging.SubscribableDuckVersionAnnotation] = "v1beta1"
 		kc.SetAnnotations(annotations)
-		_, err := r.kinesisClientSet.MessagingV1alpha1().KinesisChannels(kc.Namespace).Update(kc)
+		_, err := r.kinesisClientSet.MessagingV1alpha1().KinesisChannels(kc.Namespace).Update(ctx, kc, metav1.UpdateOptions{})
 		return err
 	}
 	return nil
@@ -366,7 +367,7 @@ func (r *Reconciler) reconcileDispatcher(ctx context.Context, kc *v1alpha1.Kines
 	d, err := r.deploymentLister.Deployments(kc.GetNamespace()).Get(dispatcherName)
 	switch {
 	case apierrs.IsNotFound(err):
-		d, err := r.KubeClientSet.AppsV1().Deployments(kc.GetNamespace()).Create(expected)
+		d, err := r.KubeClientSet.AppsV1().Deployments(kc.GetNamespace()).Create(ctx, expected, metav1.CreateOptions{})
 		if err == nil {
 			controller.GetEventRecorder(ctx).Event(kc, corev1.EventTypeNormal, dispatcherDeploymentCreated, "Dispatcher deployment created")
 			kc.Status.PropagateDispatcherStatus(&d.Status)
@@ -382,10 +383,10 @@ func (r *Reconciler) reconcileDispatcher(ctx context.Context, kc *v1alpha1.Kines
 	}
 
 	if expected.Spec.Template.Spec.Containers[0].Image != d.Spec.Template.Spec.Containers[0].Image {
-		logging.FromContext(ctx).Sugar().Infof("Deployment image is not what we expect it to be, updating Deployment Got: %q Expect: %q",
+		logging.FromContext(ctx).Infof("Deployment image is not what we expect it to be, updating Deployment Got: %q Expect: %q",
 			expected.Spec.Template.Spec.Containers[0].Image, d.Spec.Template.Spec.Containers[0].Image)
 
-		d, err := r.KubeClientSet.AppsV1().Deployments(kc.GetNamespace()).Update(expected)
+		d, err := r.KubeClientSet.AppsV1().Deployments(kc.GetNamespace()).Update(ctx, expected, metav1.UpdateOptions{})
 		if err == nil {
 			controller.GetEventRecorder(ctx).Event(kc, corev1.EventTypeNormal, dispatcherDeploymentUpdated,
 				"Dispatcher deployment updated")
@@ -406,7 +407,7 @@ func (r *Reconciler) reconcileServiceAccount(ctx context.Context, kc *v1alpha1.K
 	if err != nil {
 		if apierrs.IsNotFound(err) {
 			expected := resources.MakeServiceAccount(kc.GetNamespace(), dispatcherName)
-			sa, err := r.KubeClientSet.CoreV1().ServiceAccounts(kc.GetNamespace()).Create(expected)
+			sa, err := r.KubeClientSet.CoreV1().ServiceAccounts(kc.GetNamespace()).Create(ctx, expected, metav1.CreateOptions{})
 			if err == nil {
 				controller.GetEventRecorder(ctx).Event(kc, corev1.EventTypeNormal, dispatcherServiceAccountCreated, "Dispatcher service account created")
 				return sa, nil
@@ -426,7 +427,7 @@ func (r *Reconciler) reconcileDispatcherService(ctx context.Context, kc *v1alpha
 	if err != nil {
 		if apierrs.IsNotFound(err) {
 			expected := resources.MakeDispatcherService(kc.GetNamespace())
-			svc, err := r.KubeClientSet.CoreV1().Services(kc.GetNamespace()).Create(expected)
+			svc, err := r.KubeClientSet.CoreV1().Services(kc.GetNamespace()).Create(ctx, expected, metav1.CreateOptions{})
 
 			if err == nil {
 				controller.GetEventRecorder(ctx).Event(kc, corev1.EventTypeNormal, dispatcherServiceCreated, "Dispatcher service created")
@@ -457,7 +458,7 @@ func (r *Reconciler) reconcileRoleBinding(ctx context.Context, name string,
 	if err != nil {
 		if apierrs.IsNotFound(err) {
 			expected := resources.MakeRoleBinding(ns, name, sa, clusterRoleName)
-			_, err := r.KubeClientSet.RbacV1().RoleBindings(ns).Create(expected)
+			_, err := r.KubeClientSet.RbacV1().RoleBindings(ns).Create(ctx, expected, metav1.CreateOptions{})
 			if err == nil {
 				controller.GetEventRecorder(ctx).Event(kc, corev1.EventTypeNormal, dispatcherRoleBindingCreated, "Dispatcher role binding created")
 				return nil
@@ -488,7 +489,7 @@ func (r *Reconciler) reconcileChannelService(ctx context.Context, channel *v1alp
 	svc, err := r.serviceLister.Services(channel.Namespace).Get(resources.MakeChannelServiceName(channel.Name))
 	switch {
 	case apierrs.IsNotFound(err):
-		svc, err = r.KubeClientSet.CoreV1().Services(channel.Namespace).Create(expected)
+		svc, err = r.KubeClientSet.CoreV1().Services(channel.Namespace).Create(ctx, expected, metav1.CreateOptions{})
 		if err != nil {
 			logging.FromContext(ctx).Error("failed to create the channel service object", zap.Error(err))
 			channel.Status.MarkChannelServiceFailed("ChannelServiceFailed", fmt.Sprintf("Channel Service failed: %s", err))
@@ -505,7 +506,7 @@ func (r *Reconciler) reconcileChannelService(ctx context.Context, channel *v1alp
 		svc = svc.DeepCopy()
 		svc.Spec = expected.Spec
 
-		svc, err = r.KubeClientSet.CoreV1().Services(channel.Namespace).Update(svc)
+		svc, err = r.KubeClientSet.CoreV1().Services(channel.Namespace).Update(ctx, svc, metav1.UpdateOptions{})
 		if err != nil {
 			logging.FromContext(ctx).Error("Failed to update the channel service", zap.Error(err))
 			return nil, err
@@ -533,14 +534,20 @@ func (r *Reconciler) kinesisClient(ctx context.Context, region string, creds *co
 		return nil, fmt.Errorf("\"aws_secret_access_key\" secret key is missing")
 	}
 	logger := logging.FromContext(ctx)
-	return kinesisutil.Connect(string(keyID), string(secret), region, logger.Sugar())
+	return kinesisutil.Connect(string(keyID), string(secret), region, logger)
 }
 
-func (r *Reconciler) setupKinesisStream(ctx context.Context, stream string, kinesisClient *kinesis.Kinesis) error {
-	if _, err := kinesisutil.Describe(ctx, kinesisClient, stream); err == nil {
+func (r *Reconciler) setupKinesisStream(ctx context.Context, streamName string, streamShards int64, kinesisClient *kinesis.Kinesis) error {
+	if _, err := kinesisutil.Describe(ctx, kinesisClient, streamName); err == nil {
 		return nil
 	}
-	return kinesisutil.Create(ctx, kinesisClient, stream)
+	if streamShards == 0 {
+		streamShards = 1
+	}
+	if err := kinesisutil.Create(ctx, kinesisClient, streamName, streamShards); err != nil {
+		return err
+	}
+	return kinesisutil.Wait(ctx, kinesisClient, streamName)
 }
 
 func (r *Reconciler) removeKinesisStream(ctx context.Context, stream string, kinesisClient *kinesis.Kinesis) error {

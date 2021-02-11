@@ -28,7 +28,7 @@ spec:
       labels: *labels
     spec:
       containers:
-      - image: ko://github.com/triggermesh/aws-kinesis-channel/cmd/controller
+      - image: ko://github.com/triggermesh/aws-kinesis-channel/cmd/aws-kinesis-channel-controller
         name: controller
         env:
         - name: CONFIG_LOGGING_NAME
@@ -40,7 +40,7 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         - name: DISPATCHER_IMAGE
-          value: ko://github.com/triggermesh/aws-kinesis-channel/cmd/dispatcher
+          value: ko://github.com/triggermesh/aws-kinesis-channel/cmd/aws-kinesis-channel-dispatcher
         resources:
           limits:
             cpu: "1"
